@@ -1,0 +1,41 @@
+{
+  "id": "school-manager-tasks",
+  "name": "لوحة متابعة أعمال مدير المدرسة",
+  "short_name": "مهام المدير",
+  "description": "تطبيق ويب لمتابعة مهام مدير المدرسة والتعاميم واللجان والتقارير اليومية.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#f6f8f7",
+  "theme_color": "#0f766e",
+  "categories": ["productivity", "education"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

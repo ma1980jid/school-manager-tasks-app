@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="description" content="تطبيق ويب لإدارة ومتابعة أعمال مدير المدرسة والمهام المدرسية." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="مهام المدير" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>لوحة متابعة أعمال مدير المدرسة</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero__identity">
+        <div class="logo-pair" aria-label="شعارات المدرسة والوزارة">
+          <div class="logo-box" id="ministryLogoBox" hidden>
+            <img id="ministryLogoImg" alt="شعار وزارة التعليم" />
+          </div>
+          <div class="logo-box" id="schoolLogoBox" hidden>
+            <img id="schoolLogoImg" alt="شعار المدرسة" />
+          </div>
+        </div>
+        <div class="hero__content">
+          <div class="brand-badge">إدارة مدرسية ذكية</div>
+          <h1>لوحة متابعة أعمال مدير المدرسة</h1>
+          <p id="schoolSubtitle">تنظيم المهام والتعاميم واللجان والمتابعات من مكان واحد</p>
+        </div>
+      </div>
+      <div class="hero__actions">
+        <div class="connection-pill" id="connectionStatus" aria-live="polite">متصل</div>
+        <button class="btn btn--light" id="installBtn" hidden>تثبيت التطبيق</button>
+        <button class="btn btn--outline" id="installHelpBtn" type="button">طريقة التثبيت</button>
+        <button class="btn btn--outline" id="backupBtn">تصدير نسخة احتياطية</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel setup-panel" aria-label="إعدادات المدرسة">
+        <button class="panel__toggle" id="toggleSettings" aria-expanded="false">
+          <span>إعدادات المدرسة والنسخ الاحتياطي</span>
+          <span class="chevron">▾</span>
+        </button>
+        <div class="panel__body collapsed" id="settingsBody">
+          <form id="settingsForm" class="grid-form">
+            <label>
+              اسم المدرسة
+              <input type="text" id="schoolName" placeholder="مدرسة الشيخ سيف بن حمد الأغبري" />
+            </label>
+            <label>
+              اسم المدير
+              <input type="text" id="principalName" placeholder="سالم بن يوسف الجلنداني" />
+            </label>
+            <label>
+              العام الدراسي
+              <input type="text" id="academicYear" placeholder="2026 / 2027" />
+            </label>
+            <label>
+              معد النظام
+              <input type="text" id="preparedBy" placeholder="ماجد الأغبري" />
+            </label>
+            <label>
+              شعار وزارة التعليم
+              <input type="file" id="ministryLogo" accept="image/*" />
+              <small>اختياري، يظهر أعلى اللوحة.</small>
+            </label>
+            <label>
+              شعار المدرسة
+              <input type="file" id="schoolLogo" accept="image/*" />
+              <small>اختياري، يظهر بجانب شعار الوزارة.</small>
+            </label>
+            <label>
+              اللون الأساسي
+              <input type="color" id="primaryColor" value="#0f766e" />
+            </label>
+            <div class="form-actions">
+              <button type="submit" class="btn btn--primary">حفظ الإعدادات</button>
+              <label class="btn btn--muted file-label">
+                استيراد نسخة احتياطية
+                <input type="file" id="importFile" accept="application/json" hidden />
+              </label>
+              <button type="button" class="btn btn--muted" id="resetDemoBtn">مسح بيانات التجربة</button>
+            </div>
+          </form>
+          <div class="sync-card">
+            <div>
+              <h3>حالة التخزين والخصوصية</h3>
+              <p id="storageSummary">النسخة الحالية تحفظ البيانات داخل متصفح هذا الجهاز للتجربة، مع تصدير واستيراد نسخة احتياطية. لا توجد قاعدة بيانات خارجية في هذه المرحلة.</p>
+            </div>
+            <div class="sync-actions">
+              <button class="btn btn--muted" type="button" id="showInstallHelpBtn">دليل التثبيت</button>
+              <button class="btn btn--disabled" disabled>ربط OneDrive قريبًا</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats" aria-label="ملخص المهام">
+        <article class="stat-card stat-card--today">
+          <span>مهام اليوم</span>
+          <strong id="statToday">0</strong>
+        </article>
+        <article class="stat-card stat-card--late">
+          <span>متأخرة</span>
+          <strong id="statLate">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>قيد التنفيذ</span>
+          <strong id="statProgress">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>منجزة</span>
+          <strong id="statDone">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>عاجلة</span>
+          <strong id="statUrgent">0</strong>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <aside class="task-form-card">
+          <div class="section-title">
+            <h2 id="formTitle">إضافة مهمة جديدة</h2>
+            <p>أدخل بيانات المهمة ثم اضغط حفظ.</p>
+          </div>
+          <form id="taskForm" class="task-form">
+            <input type="hidden" id="taskId" />
+
+            <label>
+              عنوان المهمة <span class="required">*</span>
+              <input type="text" id="taskTitle" required placeholder="مثال: متابعة تعميم الاختبارات" />
+            </label>
+
+            <label>
+              نوع المهمة
+              <select id="taskCategory">
+                <option>تعميم</option>
+                <option>زيارة صفية</option>
+                <option>لجنة مدرسية</option>
+                <option>اجتماع</option>
+                <option>صيانة</option>
+                <option>شؤون طلاب</option>
+                <option>اختبارات</option>
+                <option>نشاط مدرسي</option>
+                <option>مخاطبات</option>
+                <option>متابعة ولي أمر</option>
+                <option>أعمال إدارية</option>
+                <option>أخرى</option>
+              </select>
+            </label>
+
+            <label>
+              المسؤول / الجهة
+              <input type="text" id="taskAssignee" placeholder="المدير، الوكيل، لجنة الاختبارات..." />
+            </label>
+
+            <div class="two-cols">
+              <label>
+                الأولوية
+                <select id="taskPriority">
+                  <option value="عادي">عادي</option>
+                  <option value="مهم">مهم</option>
+                  <option value="عاجل">عاجل</option>
+                </select>
+              </label>
+              <label>
+                الحالة
+                <select id="taskStatus">
+                  <option value="جديدة">جديدة</option>
+                  <option value="قيد التنفيذ">قيد التنفيذ</option>
+                  <option value="مكتملة">مكتملة</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="two-cols">
+              <label>
+                تاريخ البداية
+                <input type="date" id="taskStart" />
+              </label>
+              <label>
+                تاريخ الإنجاز
+                <input type="date" id="taskDue" />
+              </label>
+            </div>
+
+            <label>
+              وصف المهمة
+              <textarea id="taskDescription" rows="3" placeholder="تفاصيل مختصرة عن المطلوب..."></textarea>
+            </label>
+
+            <label>
+              ملاحظات المتابعة
+              <textarea id="taskNotes" rows="3" placeholder="تم التواصل، بانتظار الرد، تم إرسال الخطاب..."></textarea>
+            </label>
+
+            <label>
+              مرفقات المهمة
+              <input type="file" id="taskAttachments" multiple />
+              <small>للتجربة فقط: تحفظ الملفات داخل المتصفح. في المرحلة الثانية تحفظ في OneDrive.</small>
+            </label>
+
+            <div id="attachmentPreview" class="attachment-preview"></div>
+
+            <div class="form-actions sticky-actions">
+              <button type="submit" class="btn btn--primary">حفظ المهمة</button>
+              <button type="button" id="cancelEditBtn" class="btn btn--muted" hidden>إلغاء التعديل</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="tasks-panel">
+          <div class="section-title section-title--row">
+            <div>
+              <h2>سجل المهام</h2>
+              <p>ابحث، صفّي، وعدّل المهام حسب الحاجة.</p>
+            </div>
+            <button class="btn btn--primary" id="quickAddBtn">+ مهمة</button>
+          </div>
+
+          <div class="filters">
+            <input type="search" id="searchInput" placeholder="بحث في عنوان المهمة أو المسؤول أو الملاحظات..." />
+            <select id="filterStatus">
+              <option value="all">كل الحالات</option>
+              <option value="today">مهام اليوم</option>
+              <option value="جديدة">جديدة</option>
+              <option value="قيد التنفيذ">قيد التنفيذ</option>
+              <option value="مكتملة">مكتملة</option>
+              <option value="late">متأخرة</option>
+              <option value="urgent">عاجلة</option>
+            </select>
+            <select id="filterCategory">
+              <option value="all">كل الأنواع</option>
+            </select>
+          </div>
+
+          <div class="quick-filters" aria-label="فلاتر سريعة">
+            <button type="button" class="chip chip--active" data-quick-filter="all">الكل</button>
+            <button type="button" class="chip" data-quick-filter="today">اليوم</button>
+            <button type="button" class="chip" data-quick-filter="late">المتأخرة</button>
+            <button type="button" class="chip" data-quick-filter="urgent">العاجلة</button>
+            <button type="button" class="chip" data-quick-filter="قيد التنفيذ">قيد التنفيذ</button>
+            <button type="button" class="chip" data-quick-filter="مكتملة">المكتملة</button>
+          </div>
+
+          <div id="tasksList" class="tasks-list" aria-live="polite"></div>
+          <div id="emptyState" class="empty-state" hidden>
+            <div>📌</div>
+            <h3>لا توجد مهام بعد</h3>
+            <p>ابدأ بإضافة أول مهمة لمدير المدرسة.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <template id="taskTemplate">
+    <article class="task-card">
+      <div class="task-card__header">
+        <div>
+          <h3></h3>
+          <p class="task-meta"></p>
+        </div>
+        <span class="status-pill"></span>
+      </div>
+      <div class="task-card__body"></div>
+      <div class="task-card__tags"></div>
+      <div class="task-card__attachments"></div>
+      <div class="task-card__actions">
+        <button class="btn btn--small btn--muted" data-action="edit">تعديل</button>
+        <button class="btn btn--small btn--success" data-action="done">إنجاز</button>
+        <button class="btn btn--small btn--danger" data-action="delete">حذف</button>
+      </div>
+    </article>
+  </template>
+
+  <button class="floating-add" id="floatingAddBtn" type="button" aria-label="إضافة مهمة جديدة">+ مهمة</button>
+
+  <nav class="mobile-bar" aria-label="اختصارات الهاتف">
+    <button type="button" id="mobileAddBtn">+ مهمة</button>
+    <button type="button" data-mobile-filter="today">اليوم</button>
+    <button type="button" data-mobile-filter="late">متأخرة</button>
+    <button type="button" id="mobileBackupBtn">نسخة</button>
+  </nav>
+
+  <dialog id="installDialog" class="app-dialog" dir="rtl">
+    <form method="dialog" class="dialog-card">
+      <button class="dialog-close" value="close" aria-label="إغلاق">×</button>
+      <h2>تثبيت التطبيق على الهاتف</h2>
+      <p>بعد رفع التطبيق على رابط آمن HTTPS، يستطيع المدير إضافته إلى شاشة الهاتف واستخدامه مثل التطبيق.</p>
+      <div class="install-steps">
+        <section>
+          <h3>على Android / Chrome</h3>
+          <ol>
+            <li>افتح رابط التطبيق في Chrome.</li>
+            <li>اضغط زر <strong>تثبيت التطبيق</strong> إن ظهر.</li>
+            <li>أو من قائمة ⋮ اختر <strong>إضافة إلى الشاشة الرئيسية</strong>.</li>
+          </ol>
+        </section>
+        <section>
+          <h3>على iPhone / Safari</h3>
+          <ol>
+            <li>افتح رابط التطبيق في Safari.</li>
+            <li>اضغط زر المشاركة.</li>
+            <li>اختر <strong>إضافة إلى الشاشة الرئيسية</strong>.</li>
+          </ol>
+        </section>
+      </div>
+      <p class="dialog-note">ملاحظة: التثبيت الكامل لا يعمل عادة عند فتح الملف مباشرة من الجهاز، بل يحتاج localhost أثناء التجربة أو رابط HTTPS عند النشر.</p>
+      <menu>
+        <button class="btn btn--primary" value="close">فهمت</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
