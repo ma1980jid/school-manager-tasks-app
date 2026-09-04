@@ -1,51 +1,40 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-  >
-
-  <meta name="theme-color" content="#103A5D">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#103A5D" />
   <meta
     name="description"
     content="الاستعلام عن بيانات الطالب - مدرسة الشيخ حمدان بن خميس اليوسفي"
-  >
-
+  />
   <title>مدرسة الشيخ حمدان بن خميس اليوسفي</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
   <link
     href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap"
     rel="stylesheet"
-  >
+  />
 
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
   <div class="watermark" aria-hidden="true"></div>
 
   <main class="page-shell">
-
     <section class="card" aria-labelledby="pageTitle">
 
-      <!-- رأس الصفحة -->
       <header class="school-header">
-
         <div class="school-logo-shell">
           <div class="school-logo-ring">
             <img
               src="school-logo.png"
               alt="شعار مدرسة الشيخ حمدان بن خميس اليوسفي"
               class="school-logo"
-            >
+            />
           </div>
         </div>
 
@@ -54,18 +43,14 @@
         <h1 class="school-name">
           الشيخ حمدان بن خميس اليوسفي
         </h1>
-
       </header>
 
-      <!-- مقدمة -->
       <section class="intro">
-
         <div class="title-icon" aria-hidden="true">
-
           <svg
             viewBox="0 0 24 24"
-            width="29"
-            height="29"
+            width="28"
+            height="28"
             fill="none"
             stroke="currentColor"
             stroke-width="2"
@@ -75,33 +60,20 @@
             <circle cx="11" cy="11" r="7"></circle>
             <path d="m20 20-3.5-3.5"></path>
           </svg>
-
         </div>
 
-        <h2 id="pageTitle">
-          الاستعلام عن بيانات الطالب
-        </h2>
+        <h2 id="pageTitle">الاستعلام عن بيانات الطالب</h2>
 
         <p>
           يمكنك البحث بالاسم الثلاثي أو بالاسم كما هو مسجل في المدرسة،
           ولا يشترط كتابة كلمة «بن».
         </p>
-
       </section>
 
-      <!-- نموذج البحث -->
-      <form
-        id="searchForm"
-        class="search-box"
-        novalidate
-      >
-
-        <label for="studentName">
-          اسم الطالب
-        </label>
+      <form id="searchForm" class="search-box" novalidate>
+        <label for="studentName">اسم الطالب</label>
 
         <div class="input-wrap">
-
           <input
             type="text"
             id="studentName"
@@ -112,22 +84,17 @@
             spellcheck="false"
             maxlength="120"
             required
-          >
-
+          />
         </div>
 
-        <button
-          id="searchButton"
-          type="submit"
-        >
-
+        <button id="searchButton" type="submit">
           <span class="button-content">
-
+            <span class="button-text">بحث</span>
             <svg
               class="search-icon"
               viewBox="0 0 24 24"
-              width="21"
-              height="21"
+              width="20"
+              height="20"
               fill="none"
               stroke="currentColor"
               stroke-width="2"
@@ -138,23 +105,11 @@
               <circle cx="11" cy="11" r="7"></circle>
               <path d="m20 20-3.5-3.5"></path>
             </svg>
-
-            <span class="button-text">
-              بحث
-            </span>
-
           </span>
-
-          <span
-            class="spinner"
-            aria-hidden="true"
-          ></span>
-
+          <span class="spinner" aria-hidden="true"></span>
         </button>
-
       </form>
 
-      <!-- الرسائل -->
       <div
         id="message"
         class="message"
@@ -162,90 +117,64 @@
         aria-live="polite"
       ></div>
 
-      <!-- نتيجة البحث -->
-      <section
-        id="result"
-        class="result hidden"
-        aria-labelledby="resultTitle"
-      >
-
-        <div class="result-head">
-
-          <span
-            class="success-mark"
-            aria-hidden="true"
-          >
-            ✓
-          </span>
-
-          <div>
-
-            <p class="eyebrow">
-              تم العثور على الطالب
-            </p>
-
-            <h3 id="resultTitle">
-              بيانات الطالب
-            </h3>
-
-          </div>
-
-        </div>
-
-        <div class="student-info">
-
-          <div class="info-item info-wide">
-
-            <span>
-              اسم الطالب
-            </span>
-
-            <strong id="studentNameResult"></strong>
-
-          </div>
-
-          <div class="info-item">
-
-            <span>
-              مقيد بالصف
-            </span>
-
-            <strong id="gradeResult"></strong>
-
-          </div>
-
-          <div class="info-item">
-
-            <span>
-              الشعبة
-            </span>
-
-            <strong id="sectionResult"></strong>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- التذييل -->
       <footer>
-
-        <span>
-          جميع الحقوق محفوظة ©
-        </span>
-
-        <strong>
-          مدرسة الشيخ حمدان بن خميس اليوسفي
-        </strong>
-
+        <span>جميع الحقوق محفوظة ©</span>
+        <strong>مدرسة الشيخ حمدان بن خميس اليوسفي</strong>
       </footer>
 
     </section>
-
   </main>
 
-  <script src="script.js"></script>
+  <!-- نافذة النتيجة الاحترافية -->
+  <div
+    id="resultModal"
+    class="result-modal hidden"
+    aria-hidden="true"
+  >
+    <div id="resultBackdrop" class="result-backdrop"></div>
 
+    <section
+      class="result-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="resultTitle"
+    >
+      <button
+        id="closeResultButton"
+        class="result-close"
+        type="button"
+        aria-label="إغلاق"
+      >
+        ×
+      </button>
+
+      <div class="result-sheet-head">
+        <div class="success-badge">✓</div>
+        <div>
+          <p class="result-mini">تم العثور على الطالب</p>
+          <h3 id="resultTitle">بيانات الطالب</h3>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-box result-box-wide">
+          <span>اسم الطالب</span>
+          <strong id="studentNameResult"></strong>
+        </div>
+
+        <div class="result-box">
+          <span>مقيد بالصف</span>
+          <strong id="gradeResult"></strong>
+        </div>
+
+        <div class="result-box">
+          <span>الشعبة</span>
+          <strong id="sectionResult"></strong>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
