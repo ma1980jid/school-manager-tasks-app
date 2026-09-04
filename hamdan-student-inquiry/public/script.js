@@ -1,763 +1,119 @@
-const express =
-  require('express');
+const form = document.getElementById('searchForm');
+const input = document.getElementById('studentName');
+const button = document.getElementById('searchButton');
+const message = document.getElementById('message');
+const result = document.getElementById('result');
+const studentNameResult = document.getElementById('studentNameResult');
+const gradeResult = document.getElementById('gradeResult');
+const sectionResult = document.getElementById('sectionResult');
 
-const helmet =
-  require('helmet');
-
-const rateLimit =
-  require('express-rate-limit');
-
-const path =
-  require('path');
-
-
-const app =
-  express();
-
-
-const PORT =
-  process.env.PORT ||
-  10000;
-
-
-const SUPABASE_URL =
-  String(
-    process.env.SUPABASE_URL ||
-    ''
-  )
-    .replace(
-      /\/$/,
-      ''
-    );
-
-
-const SUPABASE_SERVICE_ROLE_KEY =
-  process.env
-    .SUPABASE_SERVICE_ROLE_KEY ||
-  '';
-
-
-/* =========================================
-   إعدادات Express
-========================================= */
-
-app.disable(
-  'x-powered-by'
-);
-
-
-app.use(
-
-  helmet({
-
-    contentSecurityPolicy: {
-
-      directives: {
-
-        defaultSrc:
-          ["'self'"],
-
-        styleSrc: [
-          "'self'",
-          'https://fonts.googleapis.com'
-        ],
-
-        fontSrc: [
-          "'self'",
-          'https://fonts.gstatic.com'
-        ],
-
-        imgSrc: [
-          "'self'",
-          'data:'
-        ],
-
-        scriptSrc:
-          ["'self'"],
-
-        connectSrc:
-          ["'self'"]
-
-      }
-
-    },
-
-    crossOriginResourcePolicy: {
-      policy: 'same-origin'
-    }
-
-  })
-
-);
-
-
-app.use(
-
-  express.json({
-    limit: '12kb'
-  })
-
-);
-
-
-/* =========================================
-   تحديد عدد محاولات البحث
-========================================= */
-
-const searchLimiter =
-  rateLimit({
-
-    windowMs:
-      15 * 60 * 1000,
-
-    limit:
-      40,
-
-    standardHeaders:
-      'draft-8',
-
-    legacyHeaders:
-      false,
-
-    message: {
-
-      ok:
-        false,
-
-      message:
-        'تم تجاوز عدد محاولات البحث المسموح بها. يرجى المحاولة لاحقًا.'
-
-    }
-
-  });
-
-
-/* =========================================
-   توحيد الكتابة العربية
-========================================= */
-
-function normalizeArabic(
-  value = ''
-) {
-
+function normalizeArabic(value = '') {
   return String(value)
-
     .trim()
-
-    /* التشكيل */
-    .replace(
-      /[\u064B-\u065F\u0670]/g,
-      ''
-    )
-
-    /* التطويل */
-    .replace(
-      /ـ/g,
-      ''
-    )
-
-    /* أشكال الألف */
-    .replace(
-      /[إأآ]/g,
-      'ا'
-    )
-
-    /* ألف مقصورة */
-    .replace(
-      /ى/g,
-      'ي'
-    )
-
-    /* تاء مربوطة */
-    .replace(
-      /ة/g,
-      'ه'
-    )
-
-    /* المسافات */
-    .replace(
-      /\s+/g,
-      ' '
-    )
-
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/ـ/g, '')
+    .replace(/[إأآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/\s+/g, ' ')
     .toLowerCase();
-
 }
 
-
-/* =========================================
-   إزالة كلمة "بن" من المقارنة
-========================================= */
-
-function getNameTokens(
-  value = ''
-) {
-
+function getNameTokens(value) {
   return normalizeArabic(value)
-
     .split(' ')
-
     .filter(Boolean)
-
-    .filter(
-
-      token =>
-        token !== 'بن'
-
-    );
-
+    .filter(token => token !== 'بن' && token !== 'ابن');
 }
 
-
-/* =========================================
-   التحقق من أن اسم البحث
-   هو بداية اسم الطالب
-========================================= */
-
-function nameStartsWith(
-  searchTokens,
-  studentTokens
-) {
-
-  if (
-    searchTokens.length >
-    studentTokens.length
-  ) {
-
-    return false;
-
-  }
-
-
-  for (
-    let i = 0;
-    i < searchTokens.length;
-    i += 1
-  ) {
-
-    if (
-      searchTokens[i] !==
-      studentTokens[i]
-    ) {
-
-      return false;
-
-    }
-
-  }
-
-
-  return true;
-
+function showMessage(text, type = 'error') {
+  message.textContent = text;
+  message.className = `message show ${type}`;
 }
 
-
-/* =========================================
-   إعداد Headers الخاصة بـ Supabase
-========================================= */
-
-function getSupabaseHeaders() {
-
-  const headers = {
-
-    apikey:
-      SUPABASE_SERVICE_ROLE_KEY,
-
-    Accept:
-      'application/json'
-
-  };
-
-
-  /*
-    المفاتيح الحديثة:
-    sb_secret_...
-
-    لا تستخدم Bearer.
-
-    أما service_role القديم فهو JWT.
-  */
-
-  if (
-    !SUPABASE_SERVICE_ROLE_KEY
-      .startsWith('sb_secret_')
-  ) {
-
-    headers.Authorization =
-      `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
-
-  }
-
-
-  return headers;
-
+function clearMessage() {
+  message.textContent = '';
+  message.className = 'message';
 }
 
-
-/* =========================================
-   جلب المرشحين من Supabase
-
-   نبحث أولًا بالاسم الأول لتقليل
-   عدد السجلات القادمة إلى Render.
-========================================= */
-
-async function fetchCandidates(
-  firstToken
-) {
-
-  if (
-    !SUPABASE_URL ||
-    !SUPABASE_SERVICE_ROLE_KEY
-  ) {
-
-    throw new Error(
-      'SUPABASE_NOT_CONFIGURED'
-    );
-
-  }
-
-
-  const params =
-    new URLSearchParams();
-
-
-  params.set(
-    'select',
-    'student_name,normalized_name,grade,section'
-  );
-
-
-  /*
-    normalized_name مخزن مسبقًا
-    بشكل موحد في قاعدة البيانات.
-
-    * هي wildcard في PostgREST.
-  */
-
-  params.set(
-    'normalized_name',
-    `ilike.${firstToken}*`
-  );
-
-
-  /*
-    500 أكثر من كافٍ لطلاب
-    يحملون الاسم الأول نفسه.
-  */
-
-  params.set(
-    'limit',
-    '500'
-  );
-
-
-  const url =
-    `${SUPABASE_URL}` +
-    `/rest/v1/hamdan_students?` +
-    params.toString();
-
-
-  const response =
-    await fetch(
-      url,
-      {
-
-        method:
-          'GET',
-
-        headers:
-          getSupabaseHeaders(),
-
-        signal:
-          AbortSignal.timeout(
-            8000
-          )
-
-      }
-    );
-
-
-  if (
-    !response.ok
-  ) {
-
-    const body =
-      await response
-        .text()
-        .catch(
-          () => ''
-        );
-
-
-    console.error(
-
-      'Supabase search failed',
-
-      response.status,
-
-      body.slice(
-        0,
-        250
-      )
-
-    );
-
-
-    throw new Error(
-      'SUPABASE_SEARCH_FAILED'
-    );
-
-  }
-
-
-  const rows =
-    await response.json();
-
-
-  if (
-    !Array.isArray(rows)
-  ) {
-
-    return [];
-
-  }
-
-
-  return rows;
-
+function hideResult() {
+  result.classList.add('hidden');
+  studentNameResult.textContent = '';
+  gradeResult.textContent = '';
+  sectionResult.textContent = '';
 }
 
+function setLoading(loading) {
+  button.disabled = loading;
+  input.disabled = loading;
+  button.classList.toggle('loading', loading);
+}
 
-/* =========================================
-   API البحث
-========================================= */
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
 
-app.post(
+  clearMessage();
+  hideResult();
 
-  '/api/search',
+  const name = input.value.trim();
+  const tokens = getNameTokens(name);
 
-  searchLimiter,
+  if (tokens.length < 3) {
+    showMessage('يرجى إدخال الاسم الثلاثي للطالب على الأقل.');
+    input.focus();
+    return;
+  }
 
-  async (
-    req,
-    res
-  ) => {
+  if (name.length > 120) {
+    showMessage('اسم الطالب المدخل طويل جدًا.');
+    input.focus();
+    return;
+  }
 
-    /*
-      منع تخزين نتائج الطلاب
-      في Cache المتصفح.
-    */
+  setLoading(true);
 
-    res.set(
-      'Cache-Control',
-      'no-store, no-cache, must-revalidate'
-    );
+  try {
+    const response = await fetch('/api/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ name })
+    });
 
+    const data = await response.json().catch(() => null);
 
-    const rawName =
-      req.body?.name;
-
-
-    if (
-      typeof rawName !==
-      'string'
-    ) {
-
-      return res
-        .status(400)
-        .json({
-
-          ok:
-            false,
-
-          message:
-            'يرجى إدخال اسم الطالب.'
-
-        });
-
-    }
-
-
-    const cleanName =
-      rawName.trim();
-
-
-    const searchTokens =
-      getNameTokens(
-        cleanName
+    if (!response.ok || !data?.ok) {
+      showMessage(
+        data?.message ||
+        'تعذر إتمام عملية البحث. يرجى المحاولة مرة أخرى.'
       );
-
-
-    /*
-      ثلاثة أسماء فعلية على الأقل.
-      كلمة "بن" لا تحسب.
-    */
-
-    if (
-      searchTokens.length < 3
-    ) {
-
-      return res
-        .status(400)
-        .json({
-
-          ok:
-            false,
-
-          message:
-            'يرجى إدخال الاسم الثلاثي للطالب على الأقل.'
-
-        });
-
+      return;
     }
 
+    studentNameResult.textContent = data.student.name || '—';
+    gradeResult.textContent = data.student.grade || '—';
+    sectionResult.textContent = data.student.section || '—';
 
-    if (
-      cleanName.length > 120
-    ) {
+    result.classList.remove('hidden');
 
-      return res
-        .status(400)
-        .json({
-
-          ok:
-            false,
-
-          message:
-            'اسم الطالب المدخل غير صحيح.'
-
-        });
-
-    }
-
-
-    try {
-
-      /*
-        الاسم الأول بعد التوحيد.
-      */
-
-      const firstToken =
-        searchTokens[0];
-
-
-      const candidates =
-        await fetchCandidates(
-          firstToken
-        );
-
-
-      /*
-        المقارنة الفعلية تتم على الخادم.
-
-        نحذف "بن" من اسم البحث
-        ومن اسم الطالب.
-      */
-
-      const matches =
-        candidates.filter(
-          student => {
-
-            const studentTokens =
-              getNameTokens(
-
-                student.normalized_name ||
-                student.student_name
-
-              );
-
-
-            return nameStartsWith(
-
-              searchTokens,
-
-              studentTokens
-
-            );
-
-          }
-        );
-
-
-      /* =====================================
-         لا يوجد طالب
-      ===================================== */
-
-      if (
-        matches.length === 0
-      ) {
-
-        return res
-          .status(404)
-          .json({
-
-            ok:
-              false,
-
-            message:
-              'لم يتم العثور على طالب مطابق. تأكد من كتابة الاسم الثلاثي بشكل صحيح.'
-
-          });
-
-      }
-
-
-      /* =====================================
-         أكثر من طالب
-
-         لا نخمن الطالب حتى لا تظهر
-         بيانات طالب خاطئ.
-      ===================================== */
-
-      if (
-        matches.length > 1
-      ) {
-
-        return res
-          .status(409)
-          .json({
-
-            ok:
-              false,
-
-            message:
-              'يوجد أكثر من طالب مطابق لهذا الاسم. يرجى إضافة الاسم الرابع أو القبيلة.'
-
-          });
-
-      }
-
-
-      /* =====================================
-         نتيجة واحدة
-      ===================================== */
-
-      const student =
-        matches[0];
-
-
-      return res.json({
-
-        ok:
-          true,
-
-        student: {
-
-          name:
-            student.student_name,
-
-          grade:
-            student.grade,
-
-          section:
-            student.section
-
-        }
-
+    setTimeout(() => {
+      result.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
       });
-
-    }
-
-    catch (error) {
-
-      console.error(
-        'Student search error:',
-        error.message
-      );
-
-
-      return res
-        .status(503)
-        .json({
-
-          ok:
-            false,
-
-          message:
-            'تعذر الاتصال ببيانات الطلاب حاليًا. يرجى المحاولة بعد قليل.'
-
-        });
-
-    }
-
-  }
-
-);
-
-
-/* =========================================
-   الملفات الثابتة
-========================================= */
-
-app.use(
-
-  express.static(
-
-    path.join(
-      __dirname,
-      'public'
-    ),
-
-    {
-
-      etag:
-        true,
-
-      maxAge:
-        '1h',
-
-      index:
-        'index.html'
-
-    }
-
-  )
-
-);
-
-
-/* =========================================
-   الصفحة الرئيسية
-========================================= */
-
-app.use(
-
-  (
-    req,
-    res
-  ) => {
-
-    res.sendFile(
-
-      path.join(
-        __dirname,
-        'public',
-        'index.html'
-      )
-
+    }, 80);
+  } catch (error) {
+    showMessage(
+      'تعذر الاتصال بالخدمة حاليًا. يرجى التحقق من الاتصال والمحاولة مرة أخرى.'
     );
-
+  } finally {
+    setLoading(false);
   }
+});
 
-);
-
-
-/* =========================================
-   تشغيل الخادم
-========================================= */
-
-app.listen(
-
-  PORT,
-
-  '0.0.0.0',
-
-  () => {
-
-    console.log(
-      `Hamdan student inquiry service running on port ${PORT}`
-    );
-
-  }
-
-);
+input.addEventListener('input', () => {
+  clearMessage();
+  hideResult();
+});
