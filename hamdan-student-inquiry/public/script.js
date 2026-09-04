@@ -1,69 +1,180 @@
-const form =
-  document.getElementById('searchForm');
+const express =
+  require('express');
 
-const input =
-  document.getElementById('studentName');
+const helmet =
+  require('helmet');
 
-const button =
-  document.getElementById('searchButton');
+const rateLimit =
+  require('express-rate-limit');
 
-const message =
-  document.getElementById('message');
+const path =
+  require('path');
 
-const result =
-  document.getElementById('result');
 
-const studentNameResult =
-  document.getElementById('studentNameResult');
+const app =
+  express();
 
-const gradeResult =
-  document.getElementById('gradeResult');
 
-const sectionResult =
-  document.getElementById('sectionResult');
+const PORT =
+  process.env.PORT ||
+  10000;
+
+
+const SUPABASE_URL =
+  String(
+    process.env.SUPABASE_URL ||
+    ''
+  )
+    .replace(
+      /\/$/,
+      ''
+    );
+
+
+const SUPABASE_SERVICE_ROLE_KEY =
+  process.env
+    .SUPABASE_SERVICE_ROLE_KEY ||
+  '';
+
+
+/* =========================================
+   إعدادات Express
+========================================= */
+
+app.disable(
+  'x-powered-by'
+);
+
+
+app.use(
+
+  helmet({
+
+    contentSecurityPolicy: {
+
+      directives: {
+
+        defaultSrc:
+          ["'self'"],
+
+        styleSrc: [
+          "'self'",
+          'https://fonts.googleapis.com'
+        ],
+
+        fontSrc: [
+          "'self'",
+          'https://fonts.gstatic.com'
+        ],
+
+        imgSrc: [
+          "'self'",
+          'data:'
+        ],
+
+        scriptSrc:
+          ["'self'"],
+
+        connectSrc:
+          ["'self'"]
+
+      }
+
+    },
+
+    crossOriginResourcePolicy: {
+      policy: 'same-origin'
+    }
+
+  })
+
+);
+
+
+app.use(
+
+  express.json({
+    limit: '12kb'
+  })
+
+);
+
+
+/* =========================================
+   تحديد عدد محاولات البحث
+========================================= */
+
+const searchLimiter =
+  rateLimit({
+
+    windowMs:
+      15 * 60 * 1000,
+
+    limit:
+      40,
+
+    standardHeaders:
+      'draft-8',
+
+    legacyHeaders:
+      false,
+
+    message: {
+
+      ok:
+        false,
+
+      message:
+        'تم تجاوز عدد محاولات البحث المسموح بها. يرجى المحاولة لاحقًا.'
+
+    }
+
+  });
 
 
 /* =========================================
    توحيد الكتابة العربية
 ========================================= */
 
-function normalizeArabic(value = '') {
+function normalizeArabic(
+  value = ''
+) {
 
   return String(value)
 
     .trim()
 
-    /* إزالة التشكيل */
+    /* التشكيل */
     .replace(
       /[\u064B-\u065F\u0670]/g,
       ''
     )
 
-    /* إزالة التطويل */
+    /* التطويل */
     .replace(
       /ـ/g,
       ''
     )
 
-    /* توحيد الألف */
+    /* أشكال الألف */
     .replace(
       /[إأآ]/g,
       'ا'
     )
 
-    /* توحيد الألف المقصورة */
+    /* ألف مقصورة */
     .replace(
       /ى/g,
       'ي'
     )
 
-    /* توحيد التاء المربوطة */
+    /* تاء مربوطة */
     .replace(
       /ة/g,
       'ه'
     )
 
-    /* توحيد المسافات */
+    /* المسافات */
     .replace(
       /\s+/g,
       ' '
@@ -75,12 +186,12 @@ function normalizeArabic(value = '') {
 
 
 /* =========================================
-   كلمات الاسم الفعلية
-
-   كلمة "بن" لا تحسب ضمن أجزاء الاسم.
+   إزالة كلمة "بن" من المقارنة
 ========================================= */
 
-function getNameTokens(value) {
+function getNameTokens(
+  value = ''
+) {
 
   return normalizeArabic(value)
 
@@ -89,293 +200,564 @@ function getNameTokens(value) {
     .filter(Boolean)
 
     .filter(
+
       token =>
         token !== 'بن'
+
     );
 
 }
 
 
 /* =========================================
-   عرض الرسالة
+   التحقق من أن اسم البحث
+   هو بداية اسم الطالب
 ========================================= */
 
-function showMessage(
-  text,
-  type = 'error'
+function nameStartsWith(
+  searchTokens,
+  studentTokens
 ) {
 
-  message.textContent =
-    text;
+  if (
+    searchTokens.length >
+    studentTokens.length
+  ) {
 
-  message.className =
-    `message show ${type}`;
+    return false;
+
+  }
+
+
+  for (
+    let i = 0;
+    i < searchTokens.length;
+    i += 1
+  ) {
+
+    if (
+      searchTokens[i] !==
+      studentTokens[i]
+    ) {
+
+      return false;
+
+    }
+
+  }
+
+
+  return true;
 
 }
 
 
 /* =========================================
-   مسح الرسالة
+   إعداد Headers الخاصة بـ Supabase
 ========================================= */
 
-function clearMessage() {
+function getSupabaseHeaders() {
 
-  message.textContent =
-    '';
+  const headers = {
 
-  message.className =
-    'message';
+    apikey:
+      SUPABASE_SERVICE_ROLE_KEY,
+
+    Accept:
+      'application/json'
+
+  };
+
+
+  /*
+    المفاتيح الحديثة:
+    sb_secret_...
+
+    لا تستخدم Bearer.
+
+    أما service_role القديم فهو JWT.
+  */
+
+  if (
+    !SUPABASE_SERVICE_ROLE_KEY
+      .startsWith('sb_secret_')
+  ) {
+
+    headers.Authorization =
+      `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+
+  }
+
+
+  return headers;
 
 }
 
 
 /* =========================================
-   إخفاء النتيجة
+   جلب المرشحين من Supabase
+
+   نبحث أولًا بالاسم الأول لتقليل
+   عدد السجلات القادمة إلى Render.
 ========================================= */
 
-function hideResult() {
+async function fetchCandidates(
+  firstToken
+) {
 
-  result.classList.add(
-    'hidden'
+  if (
+    !SUPABASE_URL ||
+    !SUPABASE_SERVICE_ROLE_KEY
+  ) {
+
+    throw new Error(
+      'SUPABASE_NOT_CONFIGURED'
+    );
+
+  }
+
+
+  const params =
+    new URLSearchParams();
+
+
+  params.set(
+    'select',
+    'student_name,normalized_name,grade,section'
   );
 
-  studentNameResult.textContent =
-    '';
 
-  gradeResult.textContent =
-    '';
+  /*
+    normalized_name مخزن مسبقًا
+    بشكل موحد في قاعدة البيانات.
 
-  sectionResult.textContent =
-    '';
+    * هي wildcard في PostgREST.
+  */
 
-}
-
-
-/* =========================================
-   حالة التحميل
-========================================= */
-
-function setLoading(loading) {
-
-  button.disabled =
-    loading;
-
-  input.disabled =
-    loading;
-
-  button.classList.toggle(
-    'loading',
-    loading
+  params.set(
+    'normalized_name',
+    `ilike.${firstToken}*`
   );
 
+
+  /*
+    500 أكثر من كافٍ لطلاب
+    يحملون الاسم الأول نفسه.
+  */
+
+  params.set(
+    'limit',
+    '500'
+  );
+
+
+  const url =
+    `${SUPABASE_URL}` +
+    `/rest/v1/hamdan_students?` +
+    params.toString();
+
+
+  const response =
+    await fetch(
+      url,
+      {
+
+        method:
+          'GET',
+
+        headers:
+          getSupabaseHeaders(),
+
+        signal:
+          AbortSignal.timeout(
+            8000
+          )
+
+      }
+    );
+
+
+  if (
+    !response.ok
+  ) {
+
+    const body =
+      await response
+        .text()
+        .catch(
+          () => ''
+        );
+
+
+    console.error(
+
+      'Supabase search failed',
+
+      response.status,
+
+      body.slice(
+        0,
+        250
+      )
+
+    );
+
+
+    throw new Error(
+      'SUPABASE_SEARCH_FAILED'
+    );
+
+  }
+
+
+  const rows =
+    await response.json();
+
+
+  if (
+    !Array.isArray(rows)
+  ) {
+
+    return [];
+
+  }
+
+
+  return rows;
+
 }
 
 
 /* =========================================
-   تنفيذ البحث
+   API البحث
 ========================================= */
 
-form.addEventListener(
-  'submit',
+app.post(
 
-  async event => {
+  '/api/search',
 
-    event.preventDefault();
+  searchLimiter,
 
-    clearMessage();
-    hideResult();
+  async (
+    req,
+    res
+  ) => {
 
-    const name =
-      input.value.trim();
+    /*
+      منع تخزين نتائج الطلاب
+      في Cache المتصفح.
+    */
 
-    const tokens =
-      getNameTokens(name);
+    res.set(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate'
+    );
+
+
+    const rawName =
+      req.body?.name;
+
+
+    if (
+      typeof rawName !==
+      'string'
+    ) {
+
+      return res
+        .status(400)
+        .json({
+
+          ok:
+            false,
+
+          message:
+            'يرجى إدخال اسم الطالب.'
+
+        });
+
+    }
+
+
+    const cleanName =
+      rawName.trim();
+
+
+    const searchTokens =
+      getNameTokens(
+        cleanName
+      );
 
 
     /*
-      نطلب ثلاثة أسماء فعلية على الأقل.
+      ثلاثة أسماء فعلية على الأقل.
       كلمة "بن" لا تحسب.
     */
 
     if (
-      tokens.length < 3
+      searchTokens.length < 3
     ) {
 
-      showMessage(
-        'يرجى إدخال الاسم الثلاثي للطالب على الأقل.'
-      );
+      return res
+        .status(400)
+        .json({
 
-      input.focus();
+          ok:
+            false,
 
-      return;
+          message:
+            'يرجى إدخال الاسم الثلاثي للطالب على الأقل.'
+
+        });
 
     }
 
 
     if (
-      name.length > 120
+      cleanName.length > 120
     ) {
 
-      showMessage(
-        'اسم الطالب المدخل طويل جدًا.'
-      );
+      return res
+        .status(400)
+        .json({
 
-      input.focus();
+          ok:
+            false,
 
-      return;
+          message:
+            'اسم الطالب المدخل غير صحيح.'
+
+        });
 
     }
 
 
-    setLoading(true);
-
-
     try {
 
-      const response =
-        await fetch(
-          '/api/search',
-          {
+      /*
+        الاسم الأول بعد التوحيد.
+      */
 
-            method:
-              'POST',
+      const firstToken =
+        searchTokens[0];
 
-            headers: {
 
-              'Content-Type':
-                'application/json',
+      const candidates =
+        await fetchCandidates(
+          firstToken
+        );
 
-              'Accept':
-                'application/json'
 
-            },
+      /*
+        المقارنة الفعلية تتم على الخادم.
 
-            body:
-              JSON.stringify({
-                name
-              })
+        نحذف "بن" من اسم البحث
+        ومن اسم الطالب.
+      */
+
+      const matches =
+        candidates.filter(
+          student => {
+
+            const studentTokens =
+              getNameTokens(
+
+                student.normalized_name ||
+                student.student_name
+
+              );
+
+
+            return nameStartsWith(
+
+              searchTokens,
+
+              studentTokens
+
+            );
 
           }
         );
 
 
-      const data =
-        await response
-          .json()
-          .catch(
-            () => null
-          );
-
+      /* =====================================
+         لا يوجد طالب
+      ===================================== */
 
       if (
-        !response.ok ||
-        !data?.ok
+        matches.length === 0
       ) {
 
-        showMessage(
-          data?.message ||
-          'تعذر إتمام عملية البحث. يرجى المحاولة مرة أخرى.'
-        );
+        return res
+          .status(404)
+          .json({
 
-        return;
+            ok:
+              false,
+
+            message:
+              'لم يتم العثور على طالب مطابق. تأكد من كتابة الاسم الثلاثي بشكل صحيح.'
+
+          });
 
       }
 
 
-      studentNameResult.textContent =
-        data.student.name ||
-        '—';
+      /* =====================================
+         أكثر من طالب
 
+         لا نخمن الطالب حتى لا تظهر
+         بيانات طالب خاطئ.
+      ===================================== */
 
-      gradeResult.textContent =
-        data.student.grade ||
-        '—';
+      if (
+        matches.length > 1
+      ) {
 
+        return res
+          .status(409)
+          .json({
 
-      sectionResult.textContent =
-        data.student.section ||
-        '—';
+            ok:
+              false,
 
-
-      result.classList.remove(
-        'hidden'
-      );
-
-
-      /*
-        تحريك النتيجة إلى مكان واضح،
-        خصوصًا في الهاتف.
-      */
-
-      setTimeout(
-        () => {
-
-          result.scrollIntoView({
-
-            behavior:
-              'smooth',
-
-            block:
-              'nearest'
+            message:
+              'يوجد أكثر من طالب مطابق لهذا الاسم. يرجى إضافة الاسم الرابع أو القبيلة.'
 
           });
 
-        },
-        80
-      );
+      }
+
+
+      /* =====================================
+         نتيجة واحدة
+      ===================================== */
+
+      const student =
+        matches[0];
+
+
+      return res.json({
+
+        ok:
+          true,
+
+        student: {
+
+          name:
+            student.student_name,
+
+          grade:
+            student.grade,
+
+          section:
+            student.section
+
+        }
+
+      });
 
     }
 
     catch (error) {
 
-      showMessage(
-        'تعذر الاتصال بالخدمة حاليًا. يرجى التحقق من الاتصال والمحاولة مرة أخرى.'
+      console.error(
+        'Student search error:',
+        error.message
       );
 
-    }
 
-    finally {
+      return res
+        .status(503)
+        .json({
 
-      setLoading(false);
+          ok:
+            false,
+
+          message:
+            'تعذر الاتصال ببيانات الطلاب حاليًا. يرجى المحاولة بعد قليل.'
+
+        });
 
     }
 
   }
+
 );
 
 
 /* =========================================
-   عند تعديل الاسم
+   الملفات الثابتة
 ========================================= */
 
-input.addEventListener(
-  'input',
+app.use(
+
+  express.static(
+
+    path.join(
+      __dirname,
+      'public'
+    ),
+
+    {
+
+      etag:
+        true,
+
+      maxAge:
+        '1h',
+
+      index:
+        'index.html'
+
+    }
+
+  )
+
+);
+
+
+/* =========================================
+   الصفحة الرئيسية
+========================================= */
+
+app.use(
+
+  (
+    req,
+    res
+  ) => {
+
+    res.sendFile(
+
+      path.join(
+        __dirname,
+        'public',
+        'index.html'
+      )
+
+    );
+
+  }
+
+);
+
+
+/* =========================================
+   تشغيل الخادم
+========================================= */
+
+app.listen(
+
+  PORT,
+
+  '0.0.0.0',
 
   () => {
 
-    clearMessage();
-    hideResult();
+    console.log(
+      `Hamdan student inquiry service running on port ${PORT}`
+    );
 
   }
-);
 
-
-/* =========================================
-   الضغط على Enter في الهاتف
-========================================= */
-
-input.addEventListener(
-  'keydown',
-
-  event => {
-
-    if (
-      event.key === 'Enter'
-    ) {
-
-      input.blur();
-
-    }
-
-  }
 );
