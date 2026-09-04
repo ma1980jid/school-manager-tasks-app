@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f6f63">
+  <meta name="description" content="الاستعلام عن بيانات الطالب - مدرسة الشيخ حمدان بن خميس اليوسفي">
+  <title>مدرسة الشيخ حمدان بن خميس اليوسفي</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="card" aria-labelledby="pageTitle">
+      <header class="school-header">
+        <div class="logo-wrap" aria-hidden="true">
+          <img src="logo.svg" alt="" class="logo">
+        </div>
+        <p class="school-label">مدرسة</p>
+        <h1 class="school-name">الشيخ حمدان بن خميس اليوسفي</h1>
+      </header>
+
+      <section class="intro">
+        <div class="title-icon" aria-hidden="true">⌕</div>
+        <h2 id="pageTitle">الاستعلام عن بيانات الطالب</h2>
+        <p>يرجى إدخال اسم الطالب الثلاثي والقبيلة كما هو مسجل في المدرسة.</p>
+      </section>
+
+      <form id="searchForm" class="search-box" novalidate>
+        <label for="studentName">اسم الطالب</label>
+        <div class="input-wrap">
+          <input
+            type="text"
+            id="studentName"
+            name="studentName"
+            placeholder="مثال: أحمد محمد سالم الحارثي"
+            autocomplete="off"
+            maxlength="120"
+            required
+          >
+        </div>
+        <button id="searchButton" type="submit">
+          <span class="button-text">بحث</span>
+          <span class="spinner" aria-hidden="true"></span>
+        </button>
+      </form>
+
+      <div id="message" class="message" role="status" aria-live="polite"></div>
+
+      <section id="result" class="result hidden" aria-labelledby="resultTitle">
+        <div class="result-head">
+          <span class="success-mark" aria-hidden="true">✓</span>
+          <div>
+            <p class="eyebrow">تم العثور على الطالب</p>
+            <h3 id="resultTitle">بيانات الطالب</h3>
+          </div>
+        </div>
+
+        <div class="student-info">
+          <div class="info-item info-wide">
+            <span>اسم الطالب</span>
+            <strong id="studentNameResult"></strong>
+          </div>
+          <div class="info-item">
+            <span>مقيد بالصف</span>
+            <strong id="gradeResult"></strong>
+          </div>
+          <div class="info-item">
+            <span>الشعبة</span>
+            <strong id="sectionResult"></strong>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span>جميع الحقوق محفوظة ©</span>
+        <strong>مدرسة الشيخ حمدان بن خميس اليوسفي</strong>
+      </footer>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
