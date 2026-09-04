@@ -1,378 +1,1668 @@
+/* =========================================
+   مدرسة الشيخ حمدان بن خميس اليوسفي
+   واجهة الاستعلام عن بيانات الطالب
+========================================= */
+
 * {
   box-sizing: border-box;
 }
 
 :root {
-  --primary: #0f6f63;
-  --primary-dark: #0a554c;
-  --primary-soft: #eaf6f3;
-  --navy: #19364a;
-  --text: #243642;
-  --muted: #70808b;
-  --border: #dce7e5;
-  --surface: #ffffff;
-  --background: #f4f8f7;
-  --danger: #b42318;
-  --danger-bg: #fff1f0;
-  --success: #087a59;
-  --success-bg: #ecfdf5;
+
+  /* ألوان الهوية */
+  --navy: #103a5d;
+  --navy-dark: #092c49;
+
+  --green: #167558;
+  --green-dark: #0f5d49;
+  --green-soft: #edf7f3;
+
+  --red: #c7474c;
+
+  --text: #18364b;
+  --muted: #748493;
+
+  --surface: rgba(255, 255, 255, 0.94);
+
+  --background: #f4f8f8;
+
+  --border: #d7e4e2;
+
+  --danger: #c43d38;
+  --danger-bg: #fff1ef;
+
+  --success: #137a58;
+  --success-bg: #eaf8f1;
+
+  --shadow:
+    0 28px 80px rgba(15, 51, 72, 0.12);
 }
+
+
+/* =========================================
+   الصفحة
+========================================= */
 
 html {
   min-height: 100%;
   background: var(--background);
+  scroll-behavior: smooth;
 }
 
 body {
-  min-height: 100vh;
+
   margin: 0;
-  font-family: "Tajawal", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  min-height: 100vh;
+
+  font-family:
+    "Tajawal",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
   color: var(--text);
+
   background:
-    radial-gradient(circle at 10% 0%, rgba(15, 111, 99, 0.08), transparent 28rem),
-    linear-gradient(180deg, #f8fbfa 0%, #f1f6f5 100%);
+
+    radial-gradient(
+      circle at 10% 0%,
+      rgba(22, 117, 88, 0.10),
+      transparent 31rem
+    ),
+
+    radial-gradient(
+      circle at 95% 100%,
+      rgba(16, 58, 93, 0.08),
+      transparent 32rem
+    ),
+
+    linear-gradient(
+      180deg,
+      #f9fbfb 0%,
+      #f1f6f5 100%
+    );
+
+  overflow-x: hidden;
 }
 
-button,
-input {
-  font: inherit;
+
+/* =========================================
+   الشعار كعلامة مائية
+========================================= */
+
+.watermark {
+
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 0;
+
+  pointer-events: none;
+
+  background-image:
+    url("school-logo.png");
+
+  background-repeat: no-repeat;
+
+  background-position:
+    center 61%;
+
+  background-size:
+    min(520px, 62vw);
+
+  opacity: 0.035;
+
+  filter:
+    saturate(0.7);
+
 }
+
+
+/* =========================================
+   غلاف الصفحة
+========================================= */
 
 .page-shell {
+
+  position: relative;
+
+  z-index: 1;
+
   min-height: 100vh;
+
   display: grid;
+
   place-items: center;
-  padding: 32px 16px;
+
+  padding:
+    30px 16px;
+
 }
+
+
+/* =========================================
+   البطاقة الرئيسية
+========================================= */
 
 .card {
-  width: min(100%, 620px);
-  background: var(--surface);
-  border: 1px solid rgba(15, 111, 99, 0.10);
-  border-radius: 28px;
-  box-shadow: 0 24px 70px rgba(25, 54, 74, 0.10);
-  overflow: hidden;
+
+  position: relative;
+
+  width:
+    min(100%, 680px);
+
+  background:
+    var(--surface);
+
+  backdrop-filter:
+    blur(14px);
+
+  -webkit-backdrop-filter:
+    blur(14px);
+
+  border:
+    1px solid rgba(16, 58, 93, 0.10);
+
+  border-radius:
+    32px;
+
+  box-shadow:
+    var(--shadow);
+
+  overflow:
+    hidden;
+
+  animation:
+    cardEnter 0.65s
+    cubic-bezier(.22,.8,.28,1)
+    both;
+
 }
+
+
+/* علامة مائية داخل البطاقة */
+
+.card::before {
+
+  content: "";
+
+  position: absolute;
+
+  width: 390px;
+  height: 390px;
+
+  left: 50%;
+
+  top: 390px;
+
+  transform:
+    translateX(-50%);
+
+  background:
+    url("school-logo.png")
+    center / contain
+    no-repeat;
+
+  opacity:
+    0.025;
+
+  pointer-events:
+    none;
+
+}
+
+
+/* =========================================
+   رأس الصفحة
+========================================= */
 
 .school-header {
+
   position: relative;
+
+  z-index: 1;
+
   text-align: center;
-  padding: 34px 28px 22px;
+
+  padding:
+    32px 28px
+    27px;
+
   background:
-    linear-gradient(180deg, rgba(234, 246, 243, 0.96), rgba(255, 255, 255, 0.96));
-  border-bottom: 1px solid var(--border);
+
+    radial-gradient(
+      circle at top,
+      rgba(22, 117, 88, 0.09),
+      transparent 65%
+    ),
+
+    linear-gradient(
+      180deg,
+      rgba(248, 252, 251, 0.98),
+      rgba(255, 255, 255, 0.97)
+    );
+
+  border-bottom:
+    1px solid var(--border);
+
 }
 
-.logo-wrap {
-  width: 94px;
-  height: 94px;
-  margin: 0 auto 12px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #fff;
-  border: 1px solid rgba(15, 111, 99, 0.14);
-  box-shadow: 0 10px 28px rgba(15, 111, 99, 0.10);
+
+/* خط هوية مستوحى من الشعار */
+
+.school-header::after {
+
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: -1px;
+
+  height: 3px;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--navy) 0%,
+      var(--navy) 33%,
+      var(--red) 33%,
+      var(--red) 66%,
+      var(--green) 66%,
+      var(--green) 100%
+    );
+
+  opacity:
+    0.82;
+
 }
 
-.logo {
-  width: 80px;
-  height: 80px;
-  display: block;
+
+/* =========================================
+   شعار المدرسة
+========================================= */
+
+.school-logo-shell {
+
+  width:
+    116px;
+
+  height:
+    116px;
+
+  margin:
+    0 auto 13px;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  border-radius:
+    50%;
+
+  background:
+    rgba(255,255,255,0.95);
+
+  box-shadow:
+
+    0 12px 32px
+    rgba(16, 58, 93, 0.12),
+
+    0 0 0 7px
+    rgba(22, 117, 88, 0.05);
+
+  animation:
+    logoEnter 0.8s
+    cubic-bezier(.15,.85,.3,1.25)
+    both;
+
 }
+
+.school-logo-ring {
+
+  width:
+    104px;
+
+  height:
+    104px;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  border-radius:
+    50%;
+
+  background:
+    #fff;
+
+  border:
+    1px solid rgba(16,58,93,0.10);
+
+  overflow:
+    hidden;
+
+}
+
+.school-logo {
+
+  width:
+    98px;
+
+  height:
+    98px;
+
+  object-fit:
+    contain;
+
+  display:
+    block;
+
+}
+
+
+/* =========================================
+   اسم المدرسة
+========================================= */
 
 .school-label {
-  margin: 0 0 4px;
-  color: var(--muted);
-  font-weight: 500;
-  font-size: 14px;
+
+  margin:
+    0 0 3px;
+
+  color:
+    var(--muted);
+
+  font-size:
+    14px;
+
+  font-weight:
+    500;
+
+  animation:
+    fadeUp 0.55s
+    0.12s both;
+
 }
 
 .school-name {
-  margin: 0;
-  color: var(--navy);
-  font-size: clamp(22px, 4vw, 28px);
-  line-height: 1.5;
-  font-weight: 800;
+
+  margin:
+    0;
+
+  color:
+    var(--navy);
+
+  font-size:
+    clamp(
+      25px,
+      4vw,
+      31px
+    );
+
+  font-weight:
+    800;
+
+  line-height:
+    1.55;
+
+  animation:
+    fadeUp 0.55s
+    0.18s both;
+
 }
 
+
+/* =========================================
+   المقدمة
+========================================= */
+
 .intro {
-  text-align: center;
-  padding: 28px 34px 8px;
+
+  position:
+    relative;
+
+  z-index:
+    1;
+
+  text-align:
+    center;
+
+  padding:
+    34px 36px
+    8px;
+
+  animation:
+    fadeUp 0.55s
+    0.26s both;
+
 }
 
 .title-icon {
-  width: 48px;
-  height: 48px;
-  margin: 0 auto 12px;
-  display: grid;
-  place-items: center;
-  border-radius: 15px;
-  color: var(--primary-dark);
-  background: var(--primary-soft);
-  font-size: 28px;
-  font-weight: 800;
+
+  width:
+    54px;
+
+  height:
+    54px;
+
+  margin:
+    0 auto 15px;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  border-radius:
+    17px;
+
+  color:
+    var(--green-dark);
+
+  background:
+    linear-gradient(
+      145deg,
+      #edf8f5,
+      #e3f3ef
+    );
+
+  box-shadow:
+    inset 0 0 0 1px
+    rgba(22, 117, 88, 0.04);
+
 }
 
 .intro h2 {
-  margin: 0 0 8px;
-  color: var(--navy);
-  font-size: 24px;
-  font-weight: 800;
+
+  margin:
+    0 0 8px;
+
+  color:
+    var(--navy);
+
+  font-size:
+    clamp(
+      23px,
+      4vw,
+      28px
+    );
+
+  font-weight:
+    800;
+
 }
 
 .intro p {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.9;
-  font-size: 15px;
+
+  max-width:
+    530px;
+
+  margin:
+    0 auto;
+
+  color:
+    var(--muted);
+
+  line-height:
+    1.9;
+
+  font-size:
+    16px;
+
 }
 
+
+/* =========================================
+   مربع البحث
+========================================= */
+
 .search-box {
-  padding: 22px 34px 10px;
+
+  position:
+    relative;
+
+  z-index:
+    1;
+
+  padding:
+    23px 36px
+    12px;
+
+  animation:
+    fadeUp 0.55s
+    0.34s both;
+
 }
 
 .search-box label {
-  display: block;
-  margin-bottom: 9px;
-  font-weight: 700;
-  color: var(--text);
+
+  display:
+    block;
+
+  margin-bottom:
+    9px;
+
+  color:
+    var(--navy);
+
+  font-size:
+    16px;
+
+  font-weight:
+    700;
+
 }
 
 .input-wrap {
-  position: relative;
+
+  position:
+    relative;
+
 }
 
 .search-box input {
-  width: 100%;
-  min-height: 54px;
-  border: 1px solid #cbdad7;
-  border-radius: 14px;
-  padding: 0 16px;
-  color: var(--text);
-  background: #fff;
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  width:
+    100%;
+
+  min-height:
+    60px;
+
+  padding:
+    0 18px;
+
+  border:
+    1.5px solid
+    #c9dad7;
+
+  border-radius:
+    17px;
+
+  outline:
+    none;
+
+  background:
+    rgba(255,255,255,0.97);
+
+  color:
+    var(--text);
+
+  font-size:
+    17px;
+
+  font-family:
+    inherit;
+
+  transition:
+    border-color .2s ease,
+    box-shadow .2s ease,
+    transform .2s ease;
+
 }
 
 .search-box input::placeholder {
-  color: #9aa8ae;
+
+  color:
+    #99a6ae;
+
+}
+
+.search-box input:hover {
+
+  border-color:
+    #a8c7c0;
+
 }
 
 .search-box input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(15, 111, 99, 0.10);
+
+  border-color:
+    var(--green);
+
+  box-shadow:
+    0 0 0 4px
+    rgba(22, 117, 88, 0.10);
+
 }
 
+
+/* =========================================
+   زر البحث
+========================================= */
+
 .search-box button {
-  width: 100%;
-  min-height: 54px;
-  margin-top: 14px;
-  border: 0;
-  border-radius: 14px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-  box-shadow: 0 10px 22px rgba(15, 111, 99, 0.18);
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+
+  position:
+    relative;
+
+  width:
+    100%;
+
+  min-height:
+    59px;
+
+  margin-top:
+    15px;
+
+  border:
+    0;
+
+  border-radius:
+    17px;
+
+  color:
+    #fff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #177a5d 0%,
+      #0f6250 100%
+    );
+
+  box-shadow:
+    0 12px 28px
+    rgba(15, 98, 80, 0.20);
+
+  font-family:
+    inherit;
+
+  font-size:
+    17px;
+
+  font-weight:
+    800;
+
+  cursor:
+    pointer;
+
+  overflow:
+    hidden;
+
+  transition:
+    transform .18s ease,
+    box-shadow .18s ease,
+    opacity .18s ease;
+
+}
+
+.search-box button::before {
+
+  content: "";
+
+  position:
+    absolute;
+
+  width:
+    120px;
+
+  height:
+    100%;
+
+  top:
+    0;
+
+  left:
+    -140px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,.14),
+      transparent
+    );
+
+  transform:
+    skewX(-20deg);
+
+  transition:
+    left .55s ease;
+
+}
+
+.search-box button:hover:not(:disabled)::before {
+
+  left:
+    calc(100% + 20px);
+
 }
 
 .search-box button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 28px rgba(15, 111, 99, 0.23);
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 15px 32px
+    rgba(15, 98, 80, 0.26);
+
+}
+
+.search-box button:active:not(:disabled) {
+
+  transform:
+    translateY(1px);
+
 }
 
 .search-box button:disabled {
-  cursor: wait;
-  opacity: 0.72;
+
+  cursor:
+    wait;
+
+  opacity:
+    .74;
+
 }
+
+.button-content {
+
+  display:
+    inline-flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    center;
+
+  gap:
+    8px;
+
+}
+
+.search-icon {
+
+  opacity:
+    .95;
+
+}
+
+
+/* =========================================
+   مؤشر التحميل
+========================================= */
 
 .spinner {
-  display: none;
-  width: 18px;
-  height: 18px;
-  margin-inline-start: 8px;
-  vertical-align: middle;
-  border: 2px solid rgba(255,255,255,0.45);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+
+  display:
+    none;
+
+  width:
+    20px;
+
+  height:
+    20px;
+
+  border:
+    2px solid
+    rgba(255,255,255,.42);
+
+  border-top-color:
+    #fff;
+
+  border-radius:
+    50%;
+
+  animation:
+    spin .7s linear
+    infinite;
+
 }
 
-.search-box button.loading .spinner {
-  display: inline-block;
+.search-box button.loading
+.button-content {
+
+  display:
+    none;
+
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.search-box button.loading
+.spinner {
+
+  display:
+    inline-block;
+
 }
+
+
+/* =========================================
+   الرسائل
+========================================= */
 
 .message {
-  display: none;
-  margin: 12px 34px 0;
-  padding: 13px 15px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.7;
+
+  position:
+    relative;
+
+  z-index:
+    1;
+
+  display:
+    none;
+
+  margin:
+    13px 36px 0;
+
+  padding:
+    14px 16px;
+
+  border-radius:
+    15px;
+
+  font-size:
+    15px;
+
+  line-height:
+    1.8;
+
+  text-align:
+    center;
+
 }
 
 .message.show {
-  display: block;
+
+  display:
+    block;
+
+  animation:
+    messageEnter .25s ease both;
+
 }
 
 .message.error {
-  color: var(--danger);
-  background: var(--danger-bg);
-  border: 1px solid #ffd0cc;
+
+  color:
+    var(--danger);
+
+  background:
+    var(--danger-bg);
+
+  border:
+    1px solid #f2c6c2;
+
 }
 
 .message.info {
-  color: var(--navy);
-  background: #f0f6f8;
-  border: 1px solid #d8e8ed;
+
+  color:
+    var(--navy);
+
+  background:
+    #f0f6f9;
+
+  border:
+    1px solid #d8e5eb;
+
 }
 
+
+/* =========================================
+   النتيجة
+========================================= */
+
 .result {
-  margin: 22px 34px 8px;
-  border: 1px solid #cfe7df;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #fbfffd, #f7fcfa);
-  overflow: hidden;
+
+  position:
+    relative;
+
+  z-index:
+    1;
+
+  margin:
+    24px 36px 8px;
+
+  border:
+    1px solid
+    #cee4dd;
+
+  border-radius:
+    21px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(251,255,253,.98),
+      rgba(246,252,249,.98)
+    );
+
+  overflow:
+    hidden;
+
+  box-shadow:
+    0 12px 32px
+    rgba(16,58,93,.05);
+
+  animation:
+    resultEnter .38s
+    cubic-bezier(.2,.8,.3,1)
+    both;
+
 }
 
 .hidden {
-  display: none !important;
+
+  display:
+    none !important;
+
 }
 
 .result-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  border-bottom: 1px solid #dcece7;
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  gap:
+    13px;
+
+  padding:
+    19px 21px;
+
+  border-bottom:
+    1px solid #dbeae5;
+
+  background:
+    linear-gradient(
+      90deg,
+      #f8fdfb,
+      #fbfefd
+    );
+
 }
 
 .success-mark {
-  flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--success-bg);
-  color: var(--success);
-  font-size: 21px;
-  font-weight: 800;
+
+  flex:
+    0 0 auto;
+
+  width:
+    44px;
+
+  height:
+    44px;
+
+  display:
+    grid;
+
+  place-items:
+    center;
+
+  border-radius:
+    50%;
+
+  color:
+    var(--success);
+
+  background:
+    var(--success-bg);
+
+  font-size:
+    25px;
+
+  font-weight:
+    800;
+
 }
 
 .eyebrow {
-  margin: 0 0 2px;
-  color: var(--success);
-  font-size: 12px;
-  font-weight: 700;
+
+  margin:
+    0 0 2px;
+
+  color:
+    var(--success);
+
+  font-size:
+    13px;
+
+  font-weight:
+    700;
+
 }
 
 .result h3 {
-  margin: 0;
-  color: var(--navy);
-  font-size: 19px;
+
+  margin:
+    0;
+
+  color:
+    var(--navy);
+
+  font-size:
+    21px;
+
+  font-weight:
+    800;
+
 }
 
+
+/* =========================================
+   معلومات الطالب
+========================================= */
+
 .student-info {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 16px;
+
+  display:
+    grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap:
+    13px;
+
+  padding:
+    18px;
+
 }
 
 .info-item {
-  min-width: 0;
-  padding: 14px 15px;
-  border: 1px solid #e0ebe8;
-  border-radius: 13px;
-  background: #fff;
+
+  min-width:
+    0;
+
+  padding:
+    16px;
+
+  border:
+    1px solid
+    #dce8e5;
+
+  border-radius:
+    15px;
+
+  background:
+    rgba(255,255,255,.94);
+
 }
 
 .info-wide {
-  grid-column: 1 / -1;
+
+  grid-column:
+    1 / -1;
+
 }
 
 .info-item span {
-  display: block;
-  margin-bottom: 5px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
+
+  display:
+    block;
+
+  margin-bottom:
+    6px;
+
+  color:
+    var(--muted);
+
+  font-size:
+    13px;
+
+  font-weight:
+    600;
+
 }
 
 .info-item strong {
-  display: block;
-  color: var(--navy);
-  font-size: 16px;
-  line-height: 1.65;
-  overflow-wrap: anywhere;
+
+  display:
+    block;
+
+  color:
+    var(--navy);
+
+  font-size:
+    18px;
+
+  line-height:
+    1.65;
+
+  font-weight:
+    800;
+
+  overflow-wrap:
+    anywhere;
+
 }
 
+
+/* =========================================
+   التذييل
+========================================= */
+
 footer {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding: 26px 24px 28px;
-  color: #87969e;
-  font-size: 12px;
-  text-align: center;
+
+  position:
+    relative;
+
+  z-index:
+    1;
+
+  display:
+    flex;
+
+  justify-content:
+    center;
+
+  flex-wrap:
+    wrap;
+
+  gap:
+    5px;
+
+  padding:
+    27px 24px
+    29px;
+
+  color:
+    #88969f;
+
+  font-size:
+    12px;
+
+  text-align:
+    center;
+
 }
 
 footer strong {
-  color: #61747d;
-  font-weight: 600;
+
+  color:
+    #60737e;
+
+  font-weight:
+    700;
+
 }
 
-@media (max-width: 560px) {
+
+/* =========================================
+   الحركات
+========================================= */
+
+@keyframes spin {
+
+  to {
+    transform:
+      rotate(360deg);
+  }
+
+}
+
+@keyframes cardEnter {
+
+  from {
+
+    opacity:
+      0;
+
+    transform:
+      translateY(22px)
+      scale(.985);
+
+  }
+
+  to {
+
+    opacity:
+      1;
+
+    transform:
+      translateY(0)
+      scale(1);
+
+  }
+
+}
+
+@keyframes logoEnter {
+
+  0% {
+
+    opacity:
+      0;
+
+    transform:
+      translateY(-14px)
+      scale(.75);
+
+  }
+
+  70% {
+
+    opacity:
+      1;
+
+    transform:
+      translateY(2px)
+      scale(1.04);
+
+  }
+
+  100% {
+
+    opacity:
+      1;
+
+    transform:
+      translateY(0)
+      scale(1);
+
+  }
+
+}
+
+@keyframes fadeUp {
+
+  from {
+
+    opacity:
+      0;
+
+    transform:
+      translateY(12px);
+
+  }
+
+  to {
+
+    opacity:
+      1;
+
+    transform:
+      translateY(0);
+
+  }
+
+}
+
+@keyframes resultEnter {
+
+  from {
+
+    opacity:
+      0;
+
+    transform:
+      translateY(12px)
+      scale(.99);
+
+  }
+
+  to {
+
+    opacity:
+      1;
+
+    transform:
+      translateY(0)
+      scale(1);
+
+  }
+
+}
+
+@keyframes messageEnter {
+
+  from {
+
+    opacity:
+      0;
+
+    transform:
+      translateY(-4px);
+
+  }
+
+  to {
+
+    opacity:
+      1;
+
+    transform:
+      translateY(0);
+
+  }
+
+}
+
+
+/* =========================================
+   الهاتف
+========================================= */
+
+@media (max-width: 600px) {
+
+  body {
+
+    background:
+
+      radial-gradient(
+        circle at top,
+        rgba(22,117,88,.09),
+        transparent 26rem
+      ),
+
+      #f5f9f8;
+
+  }
+
+  .watermark {
+
+    background-position:
+      center 69%;
+
+    background-size:
+      330px;
+
+    opacity:
+      .028;
+
+  }
+
   .page-shell {
-    padding: 14px 10px;
-    place-items: start center;
+
+    min-height:
+      100dvh;
+
+    display:
+      block;
+
+    padding:
+      8px;
+
   }
 
   .card {
-    border-radius: 22px;
+
+    width:
+      100%;
+
+    min-height:
+      calc(100dvh - 16px);
+
+    border-radius:
+      27px;
+
+    box-shadow:
+      0 18px 48px
+      rgba(16,58,93,.09);
+
+  }
+
+  .card::before {
+
+    width:
+      300px;
+
+    height:
+      300px;
+
+    top:
+      440px;
+
   }
 
   .school-header {
-    padding: 26px 20px 18px;
+
+    padding:
+      24px 18px
+      22px;
+
   }
 
-  .logo-wrap {
-    width: 82px;
-    height: 82px;
+  .school-logo-shell {
+
+    width:
+      102px;
+
+    height:
+      102px;
+
+    margin-bottom:
+      11px;
+
   }
 
-  .logo {
-    width: 70px;
-    height: 70px;
+  .school-logo-ring {
+
+    width:
+      92px;
+
+    height:
+      92px;
+
   }
 
-  .intro,
+  .school-logo {
+
+    width:
+      87px;
+
+    height:
+      87px;
+
+  }
+
+  .school-label {
+
+    font-size:
+      13px;
+
+  }
+
+  .school-name {
+
+    font-size:
+      26px;
+
+    line-height:
+      1.5;
+
+  }
+
+  .intro {
+
+    padding:
+      29px 20px
+      8px;
+
+  }
+
+  .title-icon {
+
+    width:
+      51px;
+
+    height:
+      51px;
+
+  }
+
+  .intro h2 {
+
+    font-size:
+      23px;
+
+  }
+
+  .intro p {
+
+    font-size:
+      15px;
+
+    line-height:
+      1.85;
+
+  }
+
   .search-box {
-    padding-inline: 20px;
+
+    padding:
+      21px 20px
+      11px;
+
+  }
+
+  .search-box input {
+
+    min-height:
+      59px;
+
+    border-radius:
+      17px;
+
+    font-size:
+      16px;
+
+  }
+
+  .search-box button {
+
+    min-height:
+      58px;
+
+    border-radius:
+      17px;
+
   }
 
   .message,
   .result {
-    margin-inline: 20px;
+
+    margin-inline:
+      20px;
+
   }
 
-  .intro h2 {
-    font-size: 21px;
+  .result {
+
+    margin-top:
+      22px;
+
   }
 
   .student-info {
-    grid-template-columns: 1fr;
+
+    grid-template-columns:
+      1fr;
+
+    padding:
+      15px;
+
   }
 
   .info-wide {
-    grid-column: auto;
+
+    grid-column:
+      auto;
+
   }
+
+  .info-item {
+
+    padding:
+      15px;
+
+  }
+
+  .info-item strong {
+
+    font-size:
+      17px;
+
+  }
+
+  footer {
+
+    padding:
+      25px 18px
+      28px;
+
+  }
+
+}
+
+
+/* =========================================
+   الهواتف الصغيرة
+========================================= */
+
+@media (max-width: 390px) {
+
+  .school-name {
+
+    font-size:
+      23px;
+
+  }
+
+  .intro h2 {
+
+    font-size:
+      21px;
+
+  }
+
+  .intro,
+  .search-box {
+
+    padding-inline:
+      16px;
+
+  }
+
+  .message,
+  .result {
+
+    margin-inline:
+      16px;
+
+  }
+
+}
+
+
+/* =========================================
+   تقليل الحركة عند طلب المستخدم
+========================================= */
+
+@media
+(prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+
+    animation-duration:
+      .01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+
+    transition-duration:
+      .01ms !important;
+
+    scroll-behavior:
+      auto !important;
+
+  }
+
 }
