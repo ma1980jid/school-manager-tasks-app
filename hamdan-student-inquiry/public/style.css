@@ -86,7 +86,15 @@ body {
   inset-inline: 0;
   bottom: -1px;
   height: 3px;
-  background: linear-gradient(90deg, #234f78 0%, #234f78 33%, #d05a62 33%, #d05a62 66%, #2a8d72 66%, #2a8d72 100%);
+  background: linear-gradient(
+    90deg,
+    #234f78 0%,
+    #234f78 33%,
+    #d05a62 33%,
+    #d05a62 66%,
+    #2a8d72 66%,
+    #2a8d72 100%
+  );
   opacity: 0.85;
 }
 
@@ -131,9 +139,10 @@ body {
 .school-name {
   margin: 0;
   color: var(--navy);
-  font-size: clamp(26px, 4vw, 36px);
-  line-height: 1.45;
+  font-size: clamp(18px, 3.2vw, 30px);
+  line-height: 1.35;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .intro {
@@ -247,7 +256,7 @@ body {
   display: none;
   width: 20px;
   height: 20px;
-  border: 2px solid rgba(255,255,255,.40);
+  border: 2px solid rgba(255, 255, 255, .40);
   border-top-color: #fff;
   border-radius: 50%;
   animation: spin .7s linear infinite;
@@ -305,7 +314,6 @@ footer strong {
   color: #687985;
 }
 
-/* نافذة النتيجة */
 .result-modal {
   position: fixed;
   inset: 0;
@@ -330,7 +338,7 @@ footer strong {
   bottom: 0;
   transform: translateX(-50%);
   width: min(100%, 760px);
-  background: rgba(255,255,255,0.98);
+  background: rgba(255, 255, 255, 0.98);
   border-radius: 28px 28px 0 0;
   box-shadow: 0 -10px 40px rgba(16, 58, 93, 0.18);
   padding: 18px 18px 20px;
@@ -436,6 +444,7 @@ footer strong {
     opacity: 0;
     transform: translateY(16px) scale(.99);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -447,6 +456,7 @@ footer strong {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -458,13 +468,13 @@ footer strong {
     opacity: 0;
     transform: translateX(-50%) translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
 }
 
-/* الهاتف */
 @media (max-width: 700px) {
   .page-shell {
     padding: 8px;
@@ -483,7 +493,7 @@ footer strong {
   }
 
   .school-header {
-    padding: 14px 16px 14px;
+    padding: 14px 12px 14px;
   }
 
   .school-logo-shell {
@@ -503,8 +513,9 @@ footer strong {
   }
 
   .school-name {
-    font-size: 22px;
-    line-height: 1.4;
+    font-size: 18px;
+    white-space: nowrap;
+    line-height: 1.35;
   }
 
   .intro {
@@ -580,7 +591,8 @@ footer strong {
 
 @media (max-width: 390px) {
   .school-name {
-    font-size: 20px;
+    font-size: 16px;
+    white-space: nowrap;
   }
 
   .intro h2 {
