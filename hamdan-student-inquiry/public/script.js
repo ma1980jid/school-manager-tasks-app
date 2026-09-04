@@ -2,7 +2,11 @@ const form = document.getElementById('searchForm');
 const input = document.getElementById('studentName');
 const button = document.getElementById('searchButton');
 const message = document.getElementById('message');
-const result = document.getElementById('result');
+
+const resultModal = document.getElementById('resultModal');
+const resultBackdrop = document.getElementById('resultBackdrop');
+const closeResultButton = document.getElementById('closeResultButton');
+
 const studentNameResult = document.getElementById('studentNameResult');
 const gradeResult = document.getElementById('gradeResult');
 const sectionResult = document.getElementById('sectionResult');
@@ -36,24 +40,31 @@ function clearMessage() {
   message.className = 'message';
 }
 
-function hideResult() {
-  result.classList.add('hidden');
-  studentNameResult.textContent = '';
-  gradeResult.textContent = '';
-  sectionResult.textContent = '';
-}
-
 function setLoading(loading) {
   button.disabled = loading;
   input.disabled = loading;
   button.classList.toggle('loading', loading);
 }
 
+function openResultModal(student) {
+  studentNameResult.textContent = student?.name || '—';
+  gradeResult.textContent = student?.grade || '—';
+  sectionResult.textContent = student?.section || '—';
+
+  resultModal.classList.remove('hidden');
+  resultModal.setAttribute('aria-hidden', 'false');
+}
+
+function closeResultModal() {
+  resultModal.classList.add('hidden');
+  resultModal.setAttribute('aria-hidden', 'true');
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   clearMessage();
-  hideResult();
+  closeResultModal();
 
   const name = input.value.trim();
   const tokens = getNameTokens(name);
@@ -92,18 +103,7 @@ form.addEventListener('submit', async (event) => {
       return;
     }
 
-    studentNameResult.textContent = data.student.name || '—';
-    gradeResult.textContent = data.student.grade || '—';
-    sectionResult.textContent = data.student.section || '—';
-
-    result.classList.remove('hidden');
-
-    setTimeout(() => {
-      result.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
-    }, 80);
+    openResultModal(data.student);
   } catch (error) {
     showMessage(
       'تعذر الاتصال بالخدمة حاليًا. يرجى التحقق من الاتصال والمحاولة مرة أخرى.'
@@ -115,5 +115,13 @@ form.addEventListener('submit', async (event) => {
 
 input.addEventListener('input', () => {
   clearMessage();
-  hideResult();
+});
+
+closeResultButton.addEventListener('click', closeResultModal);
+resultBackdrop.addEventListener('click', closeResultModal);
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !resultModal.classList.contains('hidden')) {
+    closeResultModal();
+  }
 });
