@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hamdan-yousufi-students
+    runtime: node
+    plan: free
+    rootDir: hamdan-student-inquiry
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeployTrigger: commit
+    healthCheckPath: /
+    envVars:
+      - key: STUDENTS_JSON
+        sync: false
