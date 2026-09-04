@@ -30,6 +30,16 @@ function setLoading(loading) {
   input.disabled = loading;
 }
 
+function meaningfulNameParts(value = '') {
+  return String(value)
+    .trim()
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .filter(part => part !== 'بن' && part !== 'ابن');
+}
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -37,8 +47,8 @@ form.addEventListener('submit', async (event) => {
   clearMessage();
   hideResult();
 
-  if (name.length < 8) {
-    showMessage('يرجى إدخال اسم الطالب الثلاثي والقبيلة بشكل صحيح.');
+  if (meaningfulNameParts(name).length < 3) {
+    showMessage('يرجى إدخال الاسم الثلاثي للطالب على الأقل.');
     input.focus();
     return;
   }
