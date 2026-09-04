@@ -68,6 +68,21 @@ function loadStudentsFallback() {
   return [];
 }
 
+function getSupabaseHeaders() {
+  const headers = {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Accept: 'application/json'
+  };
+
+  // New Supabase secret keys (sb_secret_...) must be sent only as apikey.
+  // Legacy service_role keys are JWTs and can also be sent as Bearer tokens.
+  if (!SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_secret_')) {
+    headers.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
+  }
+
+  return headers;
+}
+
 async function searchSupabase(normalizedName) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
 
@@ -78,16 +93,13 @@ async function searchSupabase(normalizedName) {
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/hamdan_students?${params.toString()}`, {
     method: 'GET',
-    headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-      Accept: 'application/json'
-    },
+    headers: getSupabaseHeaders(),
     signal: AbortSignal.timeout(7000)
   });
 
   if (!response.ok) {
-    console.error(`Supabase search failed with HTTP ${response.status}`);
+    const body = await response.text().catch(() => '');
+    console.error(`Supabase search failed with HTTP ${response.status}: ${body.slice(0, 300)}`);
     throw new Error('SUPABASE_SEARCH_FAILED');
   }
 
