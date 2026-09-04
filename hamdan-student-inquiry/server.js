@@ -6,6 +6,8 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 app.disable('x-powered-by');
 app.use(helmet({
@@ -43,7 +45,7 @@ function normalizeArabic(value = '') {
     .toLowerCase();
 }
 
-function loadStudents() {
+function loadStudentsFallback() {
   if (process.env.STUDENTS_JSON) {
     try {
       const parsed = JSON.parse(process.env.STUDENTS_JSON);
@@ -66,7 +68,34 @@ function loadStudents() {
   return [];
 }
 
-app.post('/api/search', searchLimiter, (req, res) => {
+async function searchSupabase(normalizedName) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+
+  const params = new URLSearchParams();
+  params.set('select', 'student_name,grade,section');
+  params.set('normalized_name', `eq.${normalizedName}`);
+  params.set('limit', '2');
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/hamdan_students?${params.toString()}`, {
+    method: 'GET',
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      Accept: 'application/json'
+    },
+    signal: AbortSignal.timeout(7000)
+  });
+
+  if (!response.ok) {
+    console.error(`Supabase search failed with HTTP ${response.status}`);
+    throw new Error('SUPABASE_SEARCH_FAILED');
+  }
+
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows : [];
+}
+
+app.post('/api/search', searchLimiter, async (req, res) => {
   res.set('Cache-Control', 'no-store');
 
   const rawName = req.body?.name;
@@ -79,17 +108,40 @@ app.post('/api/search', searchLimiter, (req, res) => {
     });
   }
 
-  const students = loadStudents();
-  if (!students.length) {
+  let matches;
+
+  try {
+    const supabaseMatches = await searchSupabase(name);
+
+    if (supabaseMatches !== null) {
+      matches = supabaseMatches.map(row => ({
+        name: row.student_name,
+        grade: row.grade,
+        section: row.section
+      }));
+    } else {
+      const students = loadStudentsFallback();
+      matches = students.filter(student => normalizeArabic(student.name) === name).slice(0, 2);
+    }
+  } catch (error) {
     return res.status(503).json({
       ok: false,
-      message: 'بيانات الطلاب غير مفعّلة حاليًا. يرجى مراجعة إدارة المدرسة.'
+      message: 'تعذر الاتصال ببيانات الطلاب حاليًا. يرجى المحاولة بعد قليل.'
     });
   }
 
-  const matches = students.filter(student => normalizeArabic(student.name) === name);
+  if (!matches.length) {
+    const hasConfiguredSource = Boolean(
+      (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) || loadStudentsFallback().length
+    );
 
-  if (matches.length === 0) {
+    if (!hasConfiguredSource) {
+      return res.status(503).json({
+        ok: false,
+        message: 'بيانات الطلاب غير مفعّلة حاليًا. يرجى مراجعة إدارة المدرسة.'
+      });
+    }
+
     return res.status(404).json({
       ok: false,
       message: 'لم يتم العثور على طالب مطابق. تأكد من كتابة الاسم الثلاثي والقبيلة كما هو مسجل.'
