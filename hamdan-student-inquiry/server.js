@@ -45,6 +45,20 @@ function normalizeArabic(value = '') {
     .toLowerCase();
 }
 
+function getNameTokens(value = '') {
+  return normalizeArabic(value)
+    .split(' ')
+    .map(token => token.trim())
+    .filter(Boolean)
+    .filter(token => token !== 'بن' && token !== 'ابن');
+}
+
+function matchesNamePrefix(studentName, queryTokens) {
+  const studentTokens = getNameTokens(studentName);
+  if (studentTokens.length < queryTokens.length) return false;
+  return queryTokens.every((token, index) => studentTokens[index] === token);
+}
+
 function loadStudentsFallback() {
   if (process.env.STUDENTS_JSON) {
     try {
@@ -74,8 +88,6 @@ function getSupabaseHeaders() {
     Accept: 'application/json'
   };
 
-  // New Supabase secret keys (sb_secret_...) must be sent only as apikey.
-  // Legacy service_role keys are JWTs and can also be sent as Bearer tokens.
   if (!SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_secret_')) {
     headers.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
   }
@@ -83,13 +95,16 @@ function getSupabaseHeaders() {
   return headers;
 }
 
-async function searchSupabase(normalizedName) {
+async function searchSupabase(queryTokens) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
 
+  // Search using the ordered meaningful name parts. The % wildcards allow
+  // optional words such as "بن" between the entered names.
+  const pattern = `${queryTokens.join('%')}%`;
   const params = new URLSearchParams();
   params.set('select', 'student_name,grade,section');
-  params.set('normalized_name', `eq.${normalizedName}`);
-  params.set('limit', '2');
+  params.set('normalized_name', `ilike.${pattern}`);
+  params.set('limit', '25');
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/hamdan_students?${params.toString()}`, {
     method: 'GET',
@@ -104,26 +119,30 @@ async function searchSupabase(normalizedName) {
   }
 
   const rows = await response.json();
-  return Array.isArray(rows) ? rows : [];
+  if (!Array.isArray(rows)) return [];
+
+  return rows
+    .filter(row => matchesNamePrefix(row.student_name, queryTokens))
+    .slice(0, 3);
 }
 
 app.post('/api/search', searchLimiter, async (req, res) => {
   res.set('Cache-Control', 'no-store');
 
   const rawName = req.body?.name;
-  const name = normalizeArabic(rawName);
+  const queryTokens = getNameTokens(rawName);
 
-  if (!name || name.length < 8 || name.length > 120) {
+  if (queryTokens.length < 3 || String(rawName || '').length > 120) {
     return res.status(400).json({
       ok: false,
-      message: 'يرجى إدخال اسم الطالب الثلاثي والقبيلة بشكل صحيح.'
+      message: 'يرجى إدخال الاسم الثلاثي للطالب على الأقل.'
     });
   }
 
   let matches;
 
   try {
-    const supabaseMatches = await searchSupabase(name);
+    const supabaseMatches = await searchSupabase(queryTokens);
 
     if (supabaseMatches !== null) {
       matches = supabaseMatches.map(row => ({
@@ -133,7 +152,9 @@ app.post('/api/search', searchLimiter, async (req, res) => {
       }));
     } else {
       const students = loadStudentsFallback();
-      matches = students.filter(student => normalizeArabic(student.name) === name).slice(0, 2);
+      matches = students
+        .filter(student => matchesNamePrefix(student.name, queryTokens))
+        .slice(0, 3);
     }
   } catch (error) {
     return res.status(503).json({
@@ -156,14 +177,14 @@ app.post('/api/search', searchLimiter, async (req, res) => {
 
     return res.status(404).json({
       ok: false,
-      message: 'لم يتم العثور على طالب مطابق. تأكد من كتابة الاسم الثلاثي والقبيلة كما هو مسجل.'
+      message: 'لم يتم العثور على طالب مطابق. تأكد من كتابة الاسم الثلاثي أو الاسم كما هو مسجل.'
     });
   }
 
   if (matches.length > 1) {
     return res.status(409).json({
       ok: false,
-      message: 'يوجد أكثر من طالب بالاسم نفسه. يرجى مراجعة إدارة المدرسة.'
+      message: 'يوجد أكثر من طالب مطابق لهذا الاسم. أضف الاسم الرابع أو القبيلة لتحديد الطالب.'
     });
   }
 
