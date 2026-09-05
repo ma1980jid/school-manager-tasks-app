@@ -1,6 +1,5 @@
 const express = require('express');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const app = express();
@@ -26,30 +25,6 @@ app.use(helmet({
 }));
 
 app.use(express.json({ limit: '16kb' }));
-
-const networkLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 1000,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  message: {
-    ok: false,
-    message: 'تم تسجيل عدد كبير جدًا من الطلبات من هذه الشبكة. يرجى المحاولة بعد قليل.'
-  }
-});
-
-const clientLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
-  limit: 40,
-  standardHeaders: false,
-  legacyHeaders: false,
-  skip: req => !/^[a-zA-Z0-9_-]{12,80}$/.test(String(req.get('x-client-id') || '')),
-  keyGenerator: req => `client:${req.get('x-client-id')}`,
-  message: {
-    ok: false,
-    message: 'تم إجراء عدد كبير من عمليات البحث من هذا الجهاز. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.'
-  }
-});
 
 function normalizeArabic(value = '') {
   return String(value)
@@ -283,7 +258,8 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-app.post('/api/search', networkLimiter, clientLimiter, async (req, res) => {
+// البحث مفتوح بلا حد عددي للمستخدم أو للشبكة.
+app.post('/api/search', async (req, res) => {
   res.set('Cache-Control', 'no-store');
 
   const rawName = String(req.body?.name || '').trim();
