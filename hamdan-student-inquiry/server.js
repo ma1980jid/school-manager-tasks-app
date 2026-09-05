@@ -1,7 +1,6 @@
 const express = require('express');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const fs = require('fs');
 const path = require('path');
 
 const app = express();
@@ -9,11 +8,8 @@ const PORT = process.env.PORT || 10000;
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-// Render يعمل خلف reverse proxy. هذا الإعداد يجعل Express يقرأ عنوان IP الحقيقي للمستخدم
-// بدل اعتبار جميع الزوار قادمين من عنوان خادم Render نفسه.
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
-
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -27,207 +23,210 @@ app.use(helmet({
   },
   crossOriginResourcePolicy: { policy: 'same-origin' }
 }));
-
 app.use(express.json({ limit: '16kb' }));
 
-// حماية واسعة على مستوى الشبكة فقط كخط دفاع احتياطي.
-// الرقم مرتفع عمدًا حتى لا يتضرر أولياء الأمور الموجودون خلف شبكة مشتركة أو CGNAT.
-const networkSearchLimiter = rateLimit({
+const networkLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 1000,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  message: {
-    ok: false,
-    message: 'تم تسجيل عدد كبير جدًا من الطلبات من هذه الشبكة. يرجى المحاولة بعد قليل.'
-  }
+  message: { ok: false, message: 'تم تسجيل عدد كبير جدًا من الطلبات من هذه الشبكة. يرجى المحاولة بعد قليل.' }
 });
 
-// الحماية الأساسية لكل جهاز/متصفح، اعتمادًا على معرف محلي يرسله الموقع.
-const clientSearchLimiter = rateLimit({
+const clientLimiter = rateLimit({
   windowMs: 5 * 60 * 1000,
   limit: 40,
   standardHeaders: false,
   legacyHeaders: false,
-  skip: (req) => !/^[a-zA-Z0-9_-]{12,80}$/.test(String(req.get('x-client-id') || '')),
-  keyGenerator: (req) => `client:${req.get('x-client-id')}`,
-  message: {
-    ok: false,
-    message: 'تم إجراء عدد كبير من عمليات البحث من هذا الجهاز. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.'
-  }
+  skip: req => !/^[a-zA-Z0-9_-]{12,80}$/.test(String(req.get('x-client-id') || '')),
+  keyGenerator: req => `client:${req.get('x-client-id')}`,
+  message: { ok: false, message: 'تم إجراء عدد كبير من عمليات البحث من هذا الجهاز. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.' }
 });
 
 function normalizeArabic(value = '') {
   return String(value)
     .trim()
-    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .toLowerCase()
+    .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
     .replace(/ـ/g, '')
-    .replace(/[إأآ]/g, 'ا')
-    .replace(/ى/g, 'ي')
+    .replace(/[إأآٱ]/g, 'ا')
+    .replace(/[ىيی]/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
     .replace(/ة/g, 'ه')
+    .replace(/ک/g, 'ك')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
-    .toLowerCase();
+    .trim();
 }
 
-function getNameTokens(value = '') {
-  return normalizeArabic(value)
+function nameTokens(value = '') {
+  const src = normalizeArabic(value)
     .split(' ')
-    .map(token => token.trim())
     .filter(Boolean)
-    .filter(token => token !== 'بن' && token !== 'ابن');
-}
+    .filter(t => t !== 'بن' && t !== 'ابن');
 
-function matchesNamePrefix(studentName, queryTokens) {
-  const studentTokens = getNameTokens(studentName);
-  if (studentTokens.length < queryTokens.length) return false;
-  return queryTokens.every((token, index) => studentTokens[index] === token);
-}
-
-function loadStudentsFallback() {
-  if (process.env.STUDENTS_JSON) {
-    try {
-      const parsed = JSON.parse(process.env.STUDENTS_JSON);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (error) {
-      console.error('Invalid STUDENTS_JSON environment variable');
+  const out = [];
+  for (let i = 0; i < src.length; i += 1) {
+    if (src[i] === 'عبد' && src[i + 1] && (src[i + 1] === 'الله' || src[i + 1].startsWith('ال'))) {
+      out.push(`عبد${src[i + 1]}`);
+      i += 1;
+    } else {
+      out.push(src[i]);
     }
   }
-
-  const localFile = path.join(__dirname, 'data', 'students.json');
-  if (fs.existsSync(localFile)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(localFile, 'utf8'));
-      if (Array.isArray(parsed)) return parsed;
-    } catch (error) {
-      console.error('Invalid local students.json file');
-    }
-  }
-
-  return [];
+  return out;
 }
 
-function getSupabaseHeaders() {
-  const headers = {
-    apikey: SUPABASE_SERVICE_ROLE_KEY,
-    Accept: 'application/json'
-  };
+function sameToken(a, b, position) {
+  if (a === b) return true;
+  if (position > 0) {
+    if (a.startsWith('ال') && a.slice(2) === b) return true;
+    if (b.startsWith('ال') && b.slice(2) === a) return true;
+  }
+  return false;
+}
 
+function exactMatch(q, s) {
+  return q.length === s.length && q.every((t, i) => sameToken(t, s[i], i));
+}
+
+function prefixMatch(q, s) {
+  return q.length <= s.length && q.every((t, i) => sameToken(t, s[i], i));
+}
+
+function orderedMatch(q, s) {
+  if (!q.length || !s.length || !sameToken(q[0], s[0], 0)) return false;
+  let si = 1;
+  for (let qi = 1; qi < q.length; qi += 1) {
+    let found = false;
+    while (si < s.length) {
+      if (sameToken(q[qi], s[si], qi)) {
+        found = true;
+        si += 1;
+        break;
+      }
+      si += 1;
+    }
+    if (!found) return false;
+  }
+  return true;
+}
+
+function scoreName(studentName, queryTokens) {
+  const studentTokens = nameTokens(studentName);
+  if (!studentTokens.length || !queryTokens.length) return 0;
+
+  // الأسماء الأحادية والثنائية تقبل فقط عند كتابة الاسم الكامل المسجل.
+  if (queryTokens.length < 3) return exactMatch(queryTokens, studentTokens) ? 100 : 0;
+
+  if (exactMatch(queryTokens, studentTokens)) return 100;
+  if (prefixMatch(queryTokens, studentTokens)) return 90;
+  if (orderedMatch(queryTokens, studentTokens)) return 70;
+  return 0;
+}
+
+function supabaseHeaders() {
+  const headers = { apikey: SUPABASE_SERVICE_ROLE_KEY, Accept: 'application/json' };
   if (!SUPABASE_SERVICE_ROLE_KEY.startsWith('sb_secret_')) {
     headers.Authorization = `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`;
   }
-
   return headers;
 }
 
-async function searchSupabase(queryTokens) {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
+function firstSearchKey(rawName) {
+  const parts = normalizeArabic(rawName)
+    .split(' ')
+    .filter(Boolean)
+    .filter(t => t !== 'بن' && t !== 'ابن');
+  const first = parts[0] || '';
+  return first.startsWith('عبد') ? 'عبد' : first;
+}
 
-  const pattern = `${queryTokens.join('%')}%`;
+async function fetchCandidates(rawName) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error('SUPABASE_NOT_CONFIGURED');
+
+  const firstKey = firstSearchKey(rawName);
+  if (!firstKey) return [];
+
   const params = new URLSearchParams();
   params.set('select', 'student_name,grade,section');
-  params.set('normalized_name', `ilike.${pattern}`);
-  params.set('limit', '25');
+  params.set('normalized_name', `ilike.${firstKey}%`);
+  params.set('limit', '300');
 
   const response = await fetch(`${SUPABASE_URL}/rest/v1/hamdan_students?${params.toString()}`, {
-    method: 'GET',
-    headers: getSupabaseHeaders(),
+    headers: supabaseHeaders(),
     signal: AbortSignal.timeout(7000)
   });
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    console.error(`Supabase search failed with HTTP ${response.status}: ${body.slice(0, 300)}`);
+    console.error(`Supabase search failed ${response.status}: ${body.slice(0, 250)}`);
     throw new Error('SUPABASE_SEARCH_FAILED');
   }
 
   const rows = await response.json();
-  if (!Array.isArray(rows)) return [];
-
-  return rows
-    .filter(row => matchesNamePrefix(row.student_name, queryTokens))
-    .slice(0, 3);
+  return Array.isArray(rows) ? rows : [];
 }
 
-app.post('/api/search', networkSearchLimiter, clientSearchLimiter, async (req, res) => {
+function bestMatches(rows, queryTokens) {
+  const ranked = rows
+    .map(row => ({ row, score: scoreName(row.student_name, queryTokens) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length) return [];
+  const best = ranked[0].score;
+  return ranked.filter(x => x.score === best).map(x => x.row).slice(0, 4);
+}
+
+app.post('/api/search', networkLimiter, clientLimiter, async (req, res) => {
   res.set('Cache-Control', 'no-store');
 
-  const rawName = req.body?.name;
-  const queryTokens = getNameTokens(rawName);
+  const rawName = String(req.body?.name || '').trim();
+  const queryTokens = nameTokens(rawName);
 
-  if (queryTokens.length < 3 || String(rawName || '').length > 120) {
-    return res.status(400).json({
-      ok: false,
-      message: 'يرجى إدخال الاسم الثلاثي للطالب على الأقل.'
-    });
+  if (!rawName || rawName.length > 120 || !queryTokens.length) {
+    return res.status(400).json({ ok: false, message: 'يرجى إدخال اسم الطالب كما هو مسجل في المدرسة.' });
   }
 
-  let matches;
-
   try {
-    const supabaseMatches = await searchSupabase(queryTokens);
+    const rows = await fetchCandidates(rawName);
+    const matches = bestMatches(rows, queryTokens);
 
-    if (supabaseMatches !== null) {
-      matches = supabaseMatches.map(row => ({
-        name: row.student_name,
-        grade: row.grade,
-        section: row.section
-      }));
-    } else {
-      const students = loadStudentsFallback();
-      matches = students
-        .filter(student => matchesNamePrefix(student.name, queryTokens))
-        .slice(0, 3);
+    if (!matches.length) {
+      return res.status(404).json({
+        ok: false,
+        message: 'لم يتم العثور على طالب مطابق. اكتب الاسم كما هو مسجل، أو استخدم ثلاثة أجزاء صحيحة من الاسم بدءًا باسم الطالب.'
+      });
     }
+
+    if (matches.length > 1) {
+      return res.status(409).json({
+        ok: false,
+        message: 'يوجد أكثر من طالب مطابق لهذا الاسم. أضف اسمًا آخر أو القبيلة لتحديد الطالب.'
+      });
+    }
+
+    const student = matches[0];
+    return res.json({
+      ok: true,
+      student: { name: student.student_name, grade: student.grade, section: student.section }
+    });
   } catch (error) {
+    console.error('Student search error:', error.message);
     return res.status(503).json({
       ok: false,
       message: 'تعذر الاتصال ببيانات الطلاب حاليًا. يرجى المحاولة بعد قليل.'
     });
   }
-
-  if (!matches.length) {
-    const hasConfiguredSource = Boolean(
-      (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) || loadStudentsFallback().length
-    );
-
-    if (!hasConfiguredSource) {
-      return res.status(503).json({
-        ok: false,
-        message: 'بيانات الطلاب غير مفعّلة حاليًا. يرجى مراجعة إدارة المدرسة.'
-      });
-    }
-
-    return res.status(404).json({
-      ok: false,
-      message: 'لم يتم العثور على طالب مطابق. تأكد من كتابة الاسم الثلاثي أو الاسم كما هو مسجل.'
-    });
-  }
-
-  if (matches.length > 1) {
-    return res.status(409).json({
-      ok: false,
-      message: 'يوجد أكثر من طالب مطابق لهذا الاسم. أضف الاسم الرابع أو القبيلة لتحديد الطالب.'
-    });
-  }
-
-  const student = matches[0];
-  return res.json({
-    ok: true,
-    student: {
-      name: student.name,
-      grade: student.grade,
-      section: student.section
-    }
-  });
 });
 
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: true,
   maxAge: 0,
   index: 'index.html',
-  setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'no-cache');
-  }
+  setHeaders: res => res.setHeader('Cache-Control', 'no-cache')
 }));
 
 app.use((req, res) => {
