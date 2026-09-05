@@ -9,7 +9,11 @@ const PORT = process.env.PORT || 10000;
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+// Render يعمل خلف reverse proxy. هذا الإعداد يجعل Express يقرأ عنوان IP الحقيقي للمستخدم
+// بدل اعتبار جميع الزوار قادمين من عنوان خادم Render نفسه.
+app.set('trust proxy', 1);
 app.disable('x-powered-by');
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -23,14 +27,34 @@ app.use(helmet({
   },
   crossOriginResourcePolicy: { policy: 'same-origin' }
 }));
+
 app.use(express.json({ limit: '16kb' }));
 
-const searchLimiter = rateLimit({
+// حماية واسعة على مستوى الشبكة فقط كخط دفاع احتياطي.
+// الرقم مرتفع عمدًا حتى لا يتضرر أولياء الأمور الموجودون خلف شبكة مشتركة أو CGNAT.
+const networkSearchLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 30,
+  limit: 1000,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  message: { ok: false, message: 'تم تجاوز عدد محاولات البحث المسموح بها. حاول لاحقًا.' }
+  message: {
+    ok: false,
+    message: 'تم تسجيل عدد كبير جدًا من الطلبات من هذه الشبكة. يرجى المحاولة بعد قليل.'
+  }
+});
+
+// الحماية الأساسية لكل جهاز/متصفح، اعتمادًا على معرف محلي يرسله الموقع.
+const clientSearchLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  limit: 40,
+  standardHeaders: false,
+  legacyHeaders: false,
+  skip: (req) => !/^[a-zA-Z0-9_-]{12,80}$/.test(String(req.get('x-client-id') || '')),
+  keyGenerator: (req) => `client:${req.get('x-client-id')}`,
+  message: {
+    ok: false,
+    message: 'تم إجراء عدد كبير من عمليات البحث من هذا الجهاز. يرجى الانتظار قليلًا ثم المحاولة مرة أخرى.'
+  }
 });
 
 function normalizeArabic(value = '') {
@@ -98,8 +122,6 @@ function getSupabaseHeaders() {
 async function searchSupabase(queryTokens) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return null;
 
-  // Search using the ordered meaningful name parts. The % wildcards allow
-  // optional words such as "بن" between the entered names.
   const pattern = `${queryTokens.join('%')}%`;
   const params = new URLSearchParams();
   params.set('select', 'student_name,grade,section');
@@ -126,7 +148,7 @@ async function searchSupabase(queryTokens) {
     .slice(0, 3);
 }
 
-app.post('/api/search', searchLimiter, async (req, res) => {
+app.post('/api/search', networkSearchLimiter, clientSearchLimiter, async (req, res) => {
   res.set('Cache-Control', 'no-store');
 
   const rawName = req.body?.name;
@@ -201,11 +223,15 @@ app.post('/api/search', searchLimiter, async (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public'), {
   etag: true,
-  maxAge: '1h',
-  index: 'index.html'
+  maxAge: 0,
+  index: 'index.html',
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
 }));
 
 app.use((req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
