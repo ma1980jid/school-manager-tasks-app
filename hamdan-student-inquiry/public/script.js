@@ -11,6 +11,30 @@ const studentNameResult = document.getElementById('studentNameResult');
 const gradeResult = document.getElementById('gradeResult');
 const sectionResult = document.getElementById('sectionResult');
 
+function getClientId() {
+  const storageKey = 'hamdan_student_search_client_id';
+
+  try {
+    let clientId = localStorage.getItem(storageKey);
+
+    if (!clientId) {
+      if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+        clientId = window.crypto.randomUUID().replace(/-/g, '');
+      } else {
+        clientId = `c${Date.now()}${Math.random().toString(36).slice(2, 18)}`;
+      }
+
+      localStorage.setItem(storageKey, clientId);
+    }
+
+    return clientId;
+  } catch (error) {
+    return `fallback${Math.random().toString(36).slice(2, 18)}`;
+  }
+}
+
+const clientId = getClientId();
+
 function normalizeArabic(value = '') {
   return String(value)
     .trim()
@@ -88,7 +112,8 @@ form.addEventListener('submit', async (event) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'X-Client-Id': clientId
       },
       body: JSON.stringify({ name })
     });
@@ -113,10 +138,7 @@ form.addEventListener('submit', async (event) => {
   }
 });
 
-input.addEventListener('input', () => {
-  clearMessage();
-});
-
+input.addEventListener('input', clearMessage);
 closeResultButton.addEventListener('click', closeResultModal);
 resultBackdrop.addEventListener('click', closeResultModal);
 
